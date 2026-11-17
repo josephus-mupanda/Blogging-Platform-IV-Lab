@@ -39,10 +39,18 @@ EXPLAIN (ANALYZE, BUFFERS)
 SELECT p.* FROM posts p WHERE p.deleted_at IS NULL
 ORDER BY p.created_at DESC, p.post_id DESC LIMIT 10 OFFSET 10000;
 
--- 6. Sorting: page 0 of all posts sorted by title (TITLE_ASC).
+-- 6. Sorting: page 0 of all posts sorted by title (TITLE_ASC), with idx_posts_visible_title.
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT p.* FROM posts p WHERE p.deleted_at IS NULL
 ORDER BY lower(p.title), p.post_id LIMIT 10;
+
+-- 6b. The same sort without idx_posts_visible_title (dropped and restored by ROLLBACK).
+BEGIN;
+DROP INDEX idx_posts_visible_title;
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT p.* FROM posts p WHERE p.deleted_at IS NULL
+ORDER BY lower(p.title), p.post_id LIMIT 10;
+ROLLBACK;
 
 -- 7. Loading the tags of one page of 10 posts with JOIN FETCH (PostRepository.findWithTags).
 EXPLAIN (ANALYZE, BUFFERS)
