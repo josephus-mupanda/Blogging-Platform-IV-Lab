@@ -1,5 +1,6 @@
 package com.example.Blogging_Platform_III.service;
 
+import com.example.Blogging_Platform_III.config.CacheConfig;
 import com.example.Blogging_Platform_III.entity.Post;
 import com.example.Blogging_Platform_III.entity.Tag;
 import com.example.Blogging_Platform_III.entity.User;
@@ -15,6 +16,8 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -68,7 +71,9 @@ public class PostService {
         return toPage(posts.findByTagsNameAndDeletedAtIsNull(tagName, pageable));
     }
 
+    /** Frequently read posts are served from the cache after their first read. */
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.POSTS, key = "#id")
     public PostResponse get(long id) {
         return PostResponse.from(posts.findVisibleWithTags(id).orElseThrow(() -> BlogException.notFound("Post")));
     }
@@ -77,6 +82,7 @@ public class PostService {
      * The post row and its post_tags rows are written in one transaction (REQUIRED).
      * If any statement fails, for example because the title is already used, every statement
      * of the method is rolled back and nothing is saved.
+     * A new post is not in any cache yet, so there is nothing to evict.
      */
     @Transactional(propagation = Propagation.REQUIRED)
     public PostResponse create(long authorId, String title, String body, List<Long> tagIds) {
@@ -97,6 +103,7 @@ public class PostService {
      * ApiErrors turns that refusal into HTTP 409, and the whole transaction is rolled back.
      */
     @Transactional(isolation = Isolation.REPEATABLE_READ)
+    @CacheEvict(cacheNames = CacheConfig.POSTS, key = "#id")
     public PostResponse update(long id, String title, String body, List<Long> tagIds) {
         Post post = posts.findVisibleWithTags(id).orElseThrow(() -> BlogException.notFound("Post"));
         List<Tag> selected = visibleTags(tagIds);
@@ -112,8 +119,9 @@ public class PostService {
         }
     }
 
-    /** A soft delete: deleted_at is set. */
+    /** A soft delete: deleted_at is set and the post disappears from the cache. */
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.POSTS, key = "#id")
     public void archive(long id) {
         Post post = posts.findByIdAndDeletedAtIsNull(id).orElseThrow(() -> BlogException.notFound("Post"));
         post.setDeletedAt(Instant.now());

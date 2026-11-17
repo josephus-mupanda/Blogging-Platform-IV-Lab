@@ -1,10 +1,14 @@
 package com.example.Blogging_Platform_III.service;
 
+import com.example.Blogging_Platform_III.config.CacheConfig;
 import com.example.Blogging_Platform_III.entity.User;
 import com.example.Blogging_Platform_III.exception.BlogException;
 import com.example.Blogging_Platform_III.model.UserResponse;
 import com.example.Blogging_Platform_III.repository.UserRepository;
 import java.util.List;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,17 +21,23 @@ public class UserService {
         this.users = users;
     }
 
+    /** Cached: the list is read from PostgreSQL once, then from memory until a user changes. */
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.USER_LIST)
     public List<UserResponse> list() {
         return users.findByActiveTrueOrderByUsernameAscIdAsc().stream().map(UserResponse::from).toList();
     }
 
+    /** Cached by user ID. */
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.USERS, key = "#id")
     public UserResponse get(long id) {
         return UserResponse.from(findActive(id));
     }
 
+    /** A new user changes the user list, so the cached list is removed. */
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.USER_LIST, allEntries = true)
     public UserResponse create(String username, String email, String displayName) {
         try {
             // saveAndFlush sends the INSERT now, so a unique-key error is caught here.
@@ -37,7 +47,11 @@ public class UserService {
         }
     }
 
+    /** Removes the cached copy of this user and the cached list. */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.USERS, key = "#id"),
+            @CacheEvict(cacheNames = CacheConfig.USER_LIST, allEntries = true)})
     public UserResponse update(long id, String email, String displayName) {
         User user = findActive(id);
         if (users.existsByEmailAndIdNot(email, id)) {
@@ -67,6 +81,9 @@ public class UserService {
      * the UPDATE when the transaction commits, so no save call is needed.
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.USERS, key = "#id"),
+            @CacheEvict(cacheNames = CacheConfig.USER_LIST, allEntries = true)})
     public void delete(long id) {
         findActive(id).setActive(false);
     }
