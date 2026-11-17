@@ -1,0 +1,57 @@
+
+type Query {
+  posts(filter: PostFilter): PostPage!
+  post(id: ID!): Post
+  users: [User!]!
+  user(id: ID!): User
+  tags: [Tag!]!
+  tag(id: ID!): Tag
+  comments(postId: ID!, page: Int, size: Int): CommentPage!
+  comment(postId: ID!, id: ID!): Comment
+  reviews(postId: ID!): Discussion
+  dashboard: Dashboard
+}
+
+type Mutation {
+  createUser(input: UserCreate!): User
+  updateUser(id: ID!, input: UserUpdate!): User
+  deleteUser(id: ID!): Boolean
+  createPost(authorId: ID!, input: PostInput!): Post
+  updatePost(id: ID!, input: PostInput!): Post
+  deletePost(id: ID!): Boolean
+  createTag(input: TagInput!): Tag
+  updateTag(id: ID!, input: TagInput!): Tag
+  deleteTag(id: ID!): Boolean
+  addComment(postId: ID!, authorId: ID!, input: CommentInput!): Comment
+  updateComment(postId: ID!, id: ID!, input: CommentInput!): Comment
+  deleteComment(postId: ID!, id: ID!): Boolean
+  addReview(postId: ID!, reviewerId: ID!, input: ReviewInput!): Review
+}
+
+enum Sort { NEWEST OLDEST TITLE_ASC TITLE_DESC }
+
+input UserCreate { username: String!, email: String!, displayName: String! }
+input UserUpdate { email: String!, displayName: String! }
+input PostInput { title: String!, body: String!, tagIds: [ID!] }
+input PostFilter { keyword: String, authorId: ID, tagId: ID, page: Int, size: Int, sort: Sort }
+input TagInput { name: String! }
+input CommentInput { body: String! }
+input ReviewInput { rating: Int!, text: String }
+
+type User { id: ID!, username: String!, displayName: String! }
+type Post { id: ID!, authorId: ID!, title: String!, body: String!, createdAt: String!, updatedAt: String!, tags: [Tag!]! }
+type PostPage { items: [Post!]!, page: Int!, size: Int!, totalElements: Long!, totalPages: Long! }
+type Tag { id: ID!, name: String! }
+type Comment { id: ID!, postId: ID!, authorId: ID!, authorName: String!, body: String!, createdAt: String! }
+type CommentPage { items: [Comment!]!, page: Int!, size: Int!, totalElements: Long!, totalPages: Long! }
+type Review { id: ID!, postId: ID!, reviewerId: ID!, reviewerName: String!, rating: Int!, text: String, createdAt: String! }
+type Discussion { reviews: [Review!]!, averageRating: Float! }
+type Dashboard {
+  users: Long!
+  posts: Long!
+  tags: Long!
+  comments: Long!
+  reviews: Long!
+}
+
+scalar Long
