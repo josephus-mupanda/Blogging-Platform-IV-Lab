@@ -36,6 +36,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * true for every row, so the filter is switched off.
      * The pattern is already lowercase and wrapped in % signs by PostService. The lower(...)
      * expressions match the trigram indexes idx_posts_title_lower_trgm and idx_posts_body_lower_trgm.
+     * The tag filter is an IN (subquery) that does not depend on the outer post, so PostgreSQL
+     * runs it once and keeps the result in a hash table. An EXISTS subquery that refers to the
+     * outer post ran once per post and made the COUNT query about 4 times slower
+     * (see docs/performance-report.md).
      */
     @Query("""
             SELECT p FROM Post p
@@ -44,9 +48,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                    OR lower(p.title) LIKE :pattern ESCAPE '!'
                    OR lower(p.body) LIKE :pattern ESCAPE '!')
               AND (:authorId IS NULL OR p.author.id = :authorId)
-              AND (:tagId IS NULL OR EXISTS (
-                   SELECT t FROM Tag t
-                   WHERE t.id = :tagId AND t.deletedAt IS NULL AND t MEMBER OF p.tags))
+              AND (:tagId IS NULL OR p.id IN (
+                   SELECT tagged.id FROM Post tagged JOIN tagged.tags t
+                   WHERE t.id = :tagId AND t.deletedAt IS NULL))
             """)
     Page<Post> search(@Param("pattern") String pattern, @Param("authorId") Long authorId,
                       @Param("tagId") Long tagId, Pageable pageable);

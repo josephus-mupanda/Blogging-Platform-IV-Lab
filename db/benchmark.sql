@@ -52,7 +52,24 @@ SELECT p.* FROM posts p WHERE p.deleted_at IS NULL
 ORDER BY lower(p.title), p.post_id LIMIT 10;
 ROLLBACK;
 
--- 7. Loading the tags of one page of 10 posts with JOIN FETCH (PostRepository.findWithTags).
+-- 7. Tag filter COUNT, first version of the JPQL: an EXISTS subquery that refers to the outer post.
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT count(p.post_id) FROM posts p
+WHERE p.deleted_at IS NULL
+  AND (3 IS NULL OR EXISTS (SELECT t.tag_id FROM tags t
+              WHERE t.tag_id = 3 AND t.deleted_at IS NULL
+                AND EXISTS (SELECT 1 FROM post_tags pt WHERE p.post_id = pt.post_id AND pt.tag_id = t.tag_id)));
+
+-- 7b. Tag filter COUNT, final version of the JPQL: an IN subquery that runs once.
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT count(p.post_id) FROM posts p
+WHERE p.deleted_at IS NULL
+  AND (3 IS NULL OR p.post_id IN (SELECT tp.post_id FROM posts tp
+                    JOIN post_tags pt ON tp.post_id = pt.post_id
+                    JOIN tags t ON t.tag_id = pt.tag_id
+                    WHERE t.tag_id = 3 AND t.deleted_at IS NULL));
+
+-- 8. Loading the tags of one page of 10 posts with JOIN FETCH (PostRepository.findWithTags).
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT DISTINCT p.*, t.* FROM posts p
 LEFT JOIN post_tags pt ON p.post_id = pt.post_id
