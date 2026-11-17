@@ -4,7 +4,13 @@ import com.example.Blogging_Platform_III.entity.Post;
 import com.example.Blogging_Platform_III.entity.Tag;
 import java.util.Comparator;
 import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class PostResponse {
     private long id;
     private long authorId;
@@ -13,20 +19,6 @@ public class PostResponse {
     private String createdAt;
     private String updatedAt;
     private List<TagResponse> tags = List.of();
-
-    public PostResponse() {
-    }
-
-    public PostResponse(long id, long authorId, String title, String body, String createdAt, String updatedAt,
-                        List<TagResponse> tags) {
-        this.id = id;
-        this.authorId = authorId;
-        this.title = title;
-        this.body = body;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-        this.tags = tags;
-    }
 
     /**
      * Copies a post entity into the response. Deleted tags are left out and the others are
@@ -40,61 +32,5 @@ public class PostResponse {
                 .toList();
         return new PostResponse(post.getId(), post.getAuthor().getId(), post.getTitle(), post.getBody(),
                 post.getCreatedAt().toString(), post.getUpdatedAt().toString(), visibleTags);
-    }
-
-    public long getId() {
-        return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
-    }
-
-    public long getAuthorId() {
-        return authorId;
-    }
-
-    public void setAuthorId(long authorId) {
-        this.authorId = authorId;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getBody() {
-        return body;
-    }
-
-    public void setBody(String body) {
-        this.body = body;
-    }
-
-    public String getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(String createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public String getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(String updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public List<TagResponse> getTags() {
-        return tags;
-    }
-
-    public void setTags(List<TagResponse> tags) {
-        this.tags = tags;
     }
 }

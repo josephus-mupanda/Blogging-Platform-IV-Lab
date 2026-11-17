@@ -42,6 +42,12 @@ The flow is the same as in Platform II: `Controller → Service → Repository`.
 | `dto` | The input classes that requests are bound to, with Bean Validation. |
 | `config` | `CacheConfig`, `OpenApiConfig`, `GraphQlConfig` and the AOP aspect `ServiceMonitoring`. |
 
+**Lombok** writes the repetitive code of the `model` and `entity` classes:
+
+- **`model` classes** use `@Data`, which generates getters, setters, `toString`, `equals` and `hashCode`, plus `@NoArgsConstructor` and `@AllArgsConstructor`.
+- **JPA entities** use only `@Getter`, `@Setter` on the fields that can change, and a protected `@NoArgsConstructor`, which JPA needs. They do not use `@Data`: its `equals`, `hashCode` and `toString` would read the lazy `author` and `tags` and send extra queries.
+- **`dto` classes** keep their hand-written setters, because those trim and normalize the input.
+
 Services never return entities. They copy each entity into a response class, such as `PostResponse.from(post)`, while the transaction is still open. Three reasons:
 
 - The API does not show private columns such as the email.
