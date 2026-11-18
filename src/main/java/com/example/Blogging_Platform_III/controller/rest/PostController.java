@@ -5,6 +5,7 @@ import static com.example.Blogging_Platform_III.controller.rest.ApiResponse.ok;
 import com.example.Blogging_Platform_III.dto.PostInput;
 import com.example.Blogging_Platform_III.entity.Post;
 import com.example.Blogging_Platform_III.service.PostService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -37,6 +38,8 @@ public class PostController {
     }
 
     @GetMapping
+    @Operation(summary = "List posts, paginated and sorted",
+            description = "Without keyword: findAll(pageable). With keyword: the JPQL query PostRepository.searchByKeyword.")
     ApiResponse<Page<Post>> list(@RequestParam(required = false) String keyword,
                                  @ParameterObject @PageableDefault(size = 10, sort = "createdAt",
                                          direction = Sort.Direction.DESC) Pageable pageable) {
@@ -44,6 +47,7 @@ public class PostController {
     }
 
     @GetMapping("/author/{username}")
+    @Operation(summary = "Posts of one author", description = "Derived query PostRepository.findByAuthorUsername.")
     ApiResponse<Page<Post>> byAuthor(@PathVariable String username,
                                      @ParameterObject @PageableDefault(size = 10, sort = "createdAt",
                                              direction = Sort.Direction.DESC) Pageable pageable) {
@@ -51,6 +55,7 @@ public class PostController {
     }
 
     @GetMapping("/tag/{name}")
+    @Operation(summary = "Posts with one tag", description = "Derived query PostRepository.findByTagsName.")
     ApiResponse<Page<Post>> byTag(@PathVariable String name,
                                   @ParameterObject @PageableDefault(size = 10, sort = "createdAt",
                                           direction = Sort.Direction.DESC) Pageable pageable) {
@@ -58,6 +63,7 @@ public class PostController {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Read one post", description = "Cached: the second read comes from the posts cache.")
     ApiResponse<Post> get(@PathVariable Long id) {
         return ok("Post found.", posts.get(id));
     }

@@ -17,7 +17,7 @@ A Java 21 and Spring Boot 3.5 backend for a blogging platform. It continues Blog
 | Native SQL query | `TagRepository.removeTagFromPosts` |
 | Pagination and sorting with `Pageable` | `GET /api/posts`, `GET /api/posts/{postId}/comments` |
 | `@Transactional`, propagation, isolation, rollback | `service/PostService` (`create`, `update`), `entity/Post` (`@Version`) |
-| Caching with `@EnableCaching`, `@Cacheable`, `@CacheEvict` | `BloggingPlatformIiiApplication`, `PostService`, `UserService`, `TagService` |
+| Caching with `@EnableCaching`, `@Cacheable`, `@CachePut`, `@CacheEvict` | `BloggingPlatformIiiApplication`, `PostService`, `UserService`, `TagService` |
 | Performance measured | [docs/performance-report.md](docs/performance-report.md) |
 
 ## Code structure
@@ -100,11 +100,15 @@ The API answers 404, and `GET /api/posts` shows that no post was added.
 
 `@EnableCaching` on `BloggingPlatformIiiApplication` turns caching on. `spring.cache.type=simple` keeps the values in memory.
 
-| Cache | Filled by `@Cacheable` | Emptied by `@CacheEvict` |
-|---|---|---|
-| `posts` | `PostService.get(id)` (frequently read posts) | updating or deleting the post; renaming or deleting a tag |
-| `users` | `UserService.get(id)` | updating or deleting the user |
-| `tags` | `TagService.list()` | creating, renaming or deleting a tag |
+| Cache | Filled by `@Cacheable` | Replaced by `@CachePut` | Emptied by `@CacheEvict` |
+|---|---|---|---|
+| `posts` | `PostService.get(id)` (frequently read posts) | `PostService.update` | deleting the post; renaming or deleting a tag |
+| `users` | `UserService.get(id)` | `UserService.update` | deleting the user |
+| `tags` | `TagService.list()` | — | creating, renaming or deleting a tag |
+
+- `@Cacheable`: if the value is in the cache, the method is skipped.
+- `@CachePut`: the method always runs, and its result replaces the cached value.
+- `@CacheEvict`: removes the cached value.
 
 **To see it work:** call `GET /api/posts/1` twice. The console (dev profile) shows `PostService.get(..) success in` about 5 ms the first time and under 1 ms the second time. Start the app with `--spring.cache.type=none` to compare without the cache.
 

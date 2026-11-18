@@ -4,7 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
 
-/** @EnableCaching turns on Spring Cache, so @Cacheable and @CacheEvict work in the services. */
+/** @EnableCaching turns on Spring Cache, so @Cacheable, @CachePut and @CacheEvict work in the services. */
 @SpringBootApplication
 @EnableCaching
 public class BloggingPlatformIiiApplication {

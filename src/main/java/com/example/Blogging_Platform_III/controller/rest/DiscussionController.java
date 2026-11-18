@@ -7,6 +7,7 @@ import com.example.Blogging_Platform_III.dto.ReviewInput;
 import com.example.Blogging_Platform_III.entity.Comment;
 import com.example.Blogging_Platform_III.entity.Review;
 import com.example.Blogging_Platform_III.service.DiscussionService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springdoc.core.annotations.ParameterObject;
@@ -36,6 +37,7 @@ public class DiscussionController {
 
     /** One page of comments, oldest first by default. */
     @GetMapping("/comments")
+    @Operation(summary = "List the comments of a post, paginated", description = "Derived query CommentRepository.findByPostId.")
     ApiResponse<Page<Comment>> comments(@PathVariable Long postId,
                                         @ParameterObject @PageableDefault(size = 10, sort = "createdAt")
                                         Pageable pageable) {

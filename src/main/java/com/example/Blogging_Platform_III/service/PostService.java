@@ -11,6 +11,7 @@ import com.example.Blogging_Platform_III.repository.TagRepository;
 import com.example.Blogging_Platform_III.repository.UserRepository;
 import java.util.List;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -75,16 +76,18 @@ public class PostService {
      * Isolation READ_COMMITTED: this transaction only reads data that other transactions have
      * already committed. If someone else saves the same post at the same time, the @Version
      * column in Post makes Hibernate refuse the second save (HTTP 409).
+     * @CachePut puts the updated post in the "posts" cache. saveAndFlush sends the UPDATE now,
+     * so if it fails (title already used, concurrent change) nothing is put in the cache.
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    @CacheEvict(value = "posts", key = "#id")
+    @CachePut(value = "posts", key = "#id")
     public Post update(Long id, String title, String body, List<Long> tagIds) {
         Post post = posts.findById(id).orElseThrow(() -> BlogException.notFound("Post"));
         post.setTitle(title);
         post.setBody(body);
         post.getTags().clear();
         addTags(post, tagIds);
-        return posts.save(post);
+        return posts.saveAndFlush(post);
     }
 
     /** Deletes the post (and its post_tags rows), then its comments and reviews in MongoDB. */

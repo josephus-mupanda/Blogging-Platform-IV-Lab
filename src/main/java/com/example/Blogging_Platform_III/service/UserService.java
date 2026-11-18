@@ -6,6 +6,7 @@ import com.example.Blogging_Platform_III.repository.PostRepository;
 import com.example.Blogging_Platform_III.repository.UserRepository;
 import java.util.List;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -36,14 +37,19 @@ public class UserService {
         return users.save(new User(username, email, displayName));
     }
 
-    /** The cached copy of this user is removed, so the next read gets the new values. */
+    /**
+     * @CachePut always runs the method, then puts the returned user in the "users" cache.
+     * So the cache holds the new values and the next read still comes from the cache.
+     * saveAndFlush sends the UPDATE now: if it fails (email already used), the method throws
+     * and nothing is put in the cache.
+     */
     @Transactional
-    @CacheEvict(value = "users", key = "#id")
+    @CachePut(value = "users", key = "#id")
     public User update(Long id, String email, String displayName) {
         User user = users.findById(id).orElseThrow(() -> BlogException.notFound("User"));
         user.setEmail(email);
         user.setDisplayName(displayName);
-        return users.save(user);
+        return users.saveAndFlush(user);
     }
 
     @Transactional
