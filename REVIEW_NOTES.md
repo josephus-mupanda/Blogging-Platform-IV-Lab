@@ -59,10 +59,12 @@ Code links point to `src/main/java/com/example/Blogging_Platform_III/`.
 | Requirement | Where | How to show |
 |---|---|---|
 | ✅ `@Transactional` on create/update/delete | `UserService`, `TagService`, `PostService`, `DiscussionService` | Open `PostService`. |
-| ✅ Propagation | [PostService.java:67](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L67) `propagation = Propagation.REQUIRED` | Explain (section 4.5). |
-| ✅ Isolation | [PostService.java:82](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L82) `isolation = Isolation.READ_COMMITTED` | Explain (section 4.5). |
-| ✅ No data loss during concurrent updates | [Post.java:83](src/main/java/com/example/Blogging_Platform_III/entity/Post.java#L83) `@Version` → 409 in [ApiErrors.java:44](src/main/java/com/example/Blogging_Platform_III/controller/rest/ApiErrors.java#L44) | Explain. In psql, `SELECT id, version FROM posts;` shows that the version goes up after each update. |
-| ✅ Rollback verified in an error scenario | [PostService.java:70-71](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L70) | **Rollback demo** (section 5, step 4). |
+| ✅ Propagation | [PostService.java:68](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L68) `propagation = Propagation.REQUIRED` | Explain (section 4.5). |
+| ✅ Isolation | [PostService.java:83](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L83) `isolation = Isolation.READ_COMMITTED` | Explain (section 4.5). |
+| ✅ No data loss during concurrent updates | [Post.java:83](src/main/java/com/example/Blogging_Platform_III/entity/Post.java#L83) `@Version` → 409 in [ApiErrors.java:49](src/main/java/com/example/Blogging_Platform_III/controller/rest/ApiErrors.java#L49) | Explain. In psql, `SELECT id, version FROM posts;` shows that the version goes up after each update. |
+| ✅ Rollback verified in an error scenario | [PostService.java:71-72](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L71) | **Rollback demo** (section 5, step 4). |
+| ✅ Rollback for any exception, and a clear answer when a transaction fails | `rollbackFor = Exception.class` on every write method. Handlers in [ApiErrors.java:49-83](src/main/java/com/example/Blogging_Platform_III/controller/rest/ApiErrors.java#L49) | Postman: "Same title again" gives 409 "The transaction was rolled back, nothing was saved." The console shows "Rolling back JPA transaction". |
+| ✅ PostgreSQL and MongoDB stay consistent | `flush()` before the MongoDB writes: [PostService.java:104](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L104), [UserService.java:96](src/main/java/com/example/Blogging_Platform_III/service/UserService.java#L96) | Delete a post: its comments and reviews are deleted too. |
 | ⚠️ Complex JPQL optimized | `searchByKeyword` and `@BatchSize` | See section 7. |
 | ✅ Indexes validated for frequent queries | [Post.java:34-36, 68](src/main/java/com/example/Blogging_Platform_III/entity/Post.java#L34) (`@Index`) | `\d posts` in psql. Performance report, section 1. |
 | ✅ Query times before and after optimization | [docs/performance-report.md](docs/performance-report.md), sections 1 and 2 | Index: 17–32 ms → 0.1 ms. `@BatchSize`: 13 or 53 SQL statements → 4. |
@@ -71,9 +73,10 @@ Code links point to `src/main/java/com/example/Blogging_Platform_III/`.
 
 | Requirement | Where | How to show |
 |---|---|---|
-| ✅ Cache for popular posts, users and tags | [PostService.java:57](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L57), [UserService.java:30](src/main/java/com/example/Blogging_Platform_III/service/UserService.java#L30), [TagService.java:22](src/main/java/com/example/Blogging_Platform_III/service/TagService.java#L22) (`@Cacheable`) | Send "Get post (cached)" twice and look at the terminal times (section 5, step 6). |
+| ✅ Cache for popular posts, users and tags | [PostService.java:57](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L57), [UserService.java:44](src/main/java/com/example/Blogging_Platform_III/service/UserService.java#L44), [TagService.java:22](src/main/java/com/example/Blogging_Platform_III/service/TagService.java#L22) (`@Cacheable`) | Send "Get post (cached)" twice and look at the terminal times (section 5, step 6). |
 | ✅ `@EnableCaching` | [BloggingPlatformIiiApplication.java:9](src/main/java/com/example/Blogging_Platform_III/BloggingPlatformIiiApplication.java#L9) | Open the file. |
-| ✅ Invalidation after create/update | `@CachePut` on update: [PostService.java:83](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L83), [UserService.java:47](src/main/java/com/example/Blogging_Platform_III/service/UserService.java#L47). `@CacheEvict` on create and delete: [TagService.java:33](src/main/java/com/example/Blogging_Platform_III/service/TagService.java#L33), [PostService.java:95](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L95) | Update a post, then read it: you see the new title, with no SQL. |
+| ✅ Invalidation after create/update | `@CachePut` on update: [PostService.java:84](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L84), [UserService.java:64](src/main/java/com/example/Blogging_Platform_III/service/UserService.java#L64). `@CacheEvict` on create and delete: [TagService.java:33](src/main/java/com/example/Blogging_Platform_III/service/TagService.java#L33), [PostService.java:100](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L100) | Update a post, then read it: you see the new title, with no SQL. |
+| ✅ No stale data: a cached post never shows an old author name | [UserService.java:64-65](src/main/java/com/example/Blogging_Platform_III/service/UserService.java#L64): `@Caching(put = users, evict = posts)`, plus the name copied into comments and reviews | Section 5, step 7. |
 | ✅ Performance improvement measured | [docs/performance-report.md](docs/performance-report.md), section 3 | Reading a post: 4.7 ms → 0.6 ms in the service. |
 
 ### Epic 5: Documentation
@@ -156,7 +159,19 @@ Code links point to `src/main/java/com/example/Blogging_Platform_III/`.
   1. `posts.save(...)` inserts the post.
   2. `addTags` looks up each tag; tag 999999 does not exist, so a `BlogException` is thrown.
   3. Spring rolls back the transaction, and the INSERT from step 1 is undone.
-- **MongoDB** (comments and reviews) is not part of the PostgreSQL transaction. Each save there changes one document, and MongoDB saves one document completely or not at all.
+- **`rollbackFor = Exception.class`:** by default Spring rolls back only for a `RuntimeException` (and `Error`). With `rollbackFor = Exception.class`, **every** exception rolls back, including checked ones. It is on every write method.
+- **When a transaction fails, the client is told** (`ApiErrors`, and `GraphQlErrors` for GraphQL):
+
+  | Exception | Example | Answer |
+  |---|---|---|
+  | `BlogException` | a tag does not exist | 404 / 409 / 400 |
+  | `DataIntegrityViolationException` | title, tag name or email already used | 409, "The transaction was rolled back, nothing was saved." |
+  | `ConcurrencyFailureException` | `@Version` conflict | 409, "Your change was rolled back." |
+  | `TransactionException` | database down, commit failed | 500, "The transaction failed and was rolled back." |
+  | `DataAccessException` | any other database error | 500, "The transaction was rolled back." |
+
+- **Seeing the rollback:** the `dev` profile logs Spring's `JpaTransactionManager`. A failed write prints "Initiating transaction rollback" and then "Rolling back JPA transaction".
+- **MongoDB** (comments and reviews) is not part of the PostgreSQL transaction. So a method that writes to both does **PostgreSQL first** and forces it with `flush()` / `saveAndFlush()`, then MongoDB. If PostgreSQL fails, the transaction is rolled back and MongoDB is never touched. For example, `PostService.delete` deletes the post, calls `flush()`, and only then deletes the comments.
 
 ### 4.6 Caching
 
@@ -165,6 +180,12 @@ Code links point to `src/main/java/com/example/Blogging_Platform_III/`.
 - **`@Cacheable("posts", key = "#id")`:** before running `get(id)`, Spring looks in the cache. If the post is there, the method is skipped.
 - **`@CachePut`:** the method **always runs**, then its result replaces the value in the cache. Used on `update`, so the cache holds the new version. `saveAndFlush` makes the SQL run inside the method, so if it fails, nothing goes into the cache.
 - **`@CacheEvict`:** removes the value. Used on delete, and on tag changes (`allEntries = true` clears the whole cache, because posts show tag names).
+- **Cache consistency:** a cached post **contains its author and its tags**. So when a user is updated, `UserService.update` does three things:
+  1. `@CachePut` puts the new user in the `users` cache.
+  2. `@CacheEvict(value = "posts", allEntries = true)` clears the posts cache, so no post shows the old name.
+  3. It updates the name copied into that user's comments and reviews in MongoDB.
+
+  `@Caching` groups the two annotations on one method. Tag changes clear the posts cache in the same way.
 
 ### 4.7 Optimization
 
@@ -183,14 +204,21 @@ Code links point to `src/main/java/com/example/Blogging_Platform_III/`.
    2. Run "Rollback demo": you get a 404, "Tag 999999 was not found".
    3. Run "List posts" again: `totalElements` is the same, so the inserted post was rolled back.
    4. Show `PostService.create` and explain the three steps.
+   5. Show the console: "Initiating transaction rollback" / "Rolling back JPA transaction".
+   6. Run "Same title again" twice: the second gives 409, "The transaction was rolled back, nothing was saved."
 5. **Concurrency**: show `@Version` and the 409 handler. In psql, `SELECT id, title, version FROM posts;` before and after an update shows the version going up.
 6. **Cache** (2 min):
    1. Send "Get post (cached)" twice.
    2. In the terminal, the first `PostService.get(..) success in` shows a few ms, the second under 1 ms.
    3. Run "Update post", then "Get post": the new title appears with no SQL (`@CachePut`).
    4. Optional: restart with `--spring.cache.type=none` and show that the second call is slow again.
-7. **Performance report** (1 min): show the before and after tables.
-8. **GraphQL** (30 s): in GraphiQL, run block 7 of `docs/examples.graphql`.
+7. **Cache consistency** (1 min):
+   1. Send "Get post (cached)": note the author's `displayName`.
+   2. Run "Update user" with a new `displayName`.
+   3. Send "Get post (cached)" again: the post shows the **new** name.
+   4. "List comments" also shows the new `authorName`.
+8. **Performance report** (1 min): show the before and after tables.
+9. **GraphQL** (30 s): in GraphiQL, run block 7 of `docs/examples.graphql`.
 
 ---
 
@@ -209,6 +237,10 @@ Code links point to `src/main/java/com/example/Blogging_Platform_III/`.
 | `@Cacheable` vs `@CachePut` vs `@CacheEvict`? | Read from the cache and skip the method / always run the method and update the cache / remove from the cache. |
 | Where is the cache stored? | In the application's memory (`spring.cache.type=simple`). It is lost on restart, and it is not shared between several servers (Redis would be used for that). |
 | Why EAGER for tags? | The tags are always shown with a post, and it avoids "lazy loading" errors when the post is turned into JSON. `@BatchSize` keeps it efficient. |
+| What is `rollbackFor`? | By default only a `RuntimeException` rolls back. `rollbackFor = Exception.class` makes any exception roll back. |
+| What happens if the database is down during a write? | Spring cannot start or commit the transaction and throws a `TransactionException`. `ApiErrors` answers 500, "The transaction failed and was rolled back". Nothing is saved. |
+| How do you keep the cache consistent? | Every write that changes cached data refreshes it. A post in the cache contains its author, so updating a user also clears the posts cache (`@Caching` with `@CachePut` + `@CacheEvict`). |
+| Why `flush()` before writing to MongoDB? | MongoDB is not in the PostgreSQL transaction. `flush()` runs the SQL now, so if PostgreSQL fails we stop before MongoDB is changed. |
 | What does `@Version` do? | Optimistic locking: it refuses an update based on an old version of the row, so two people cannot erase each other's changes. |
 | Why are comments in MongoDB? | That was the Platform I design (flexible, unstructured data for comments and reviews). Lab 3 says to keep the database "as implemented in Week 4". |
 
@@ -220,5 +252,5 @@ Code links point to `src/main/java/com/example/Blogging_Platform_III/`.
 - **"Complex JPQL queries optimized".** My JPQL query is simple on purpose. The optimizations I measured are the indexes and `@BatchSize`. If asked, explain the N+1 problem and show the numbers (13 or 53 statements → 4).
 - **No comparison with the Week 5 (Platform II) version in the report.** The overview mentions it, but the acceptance criteria do not. If asked: Platform II used hand-written JDBC with no cache; Platform III adds the cache (reads 6 to 12 times faster) and repository paging.
 - **No automated tests.** Rollback is shown by hand with Postman. The brief says "verified" and "tested for rollback scenarios", so do the demo live.
-- **MongoDB writes are not in the transaction.** Explain that each comment or review save is atomic on its own.
+- **MongoDB writes are not in the PostgreSQL transaction.** Each comment or review save is atomic on its own, and a method that writes to both always does PostgreSQL first (`flush()`), then MongoDB. If MongoDB failed after PostgreSQL succeeded, the PostgreSQL part would still be rolled back (the exception happens before the commit), but MongoDB changes already made would stay. A full fix needs MongoDB transactions (replica set), which is out of scope.
 - **`@CachePut` is an extra.** The brief only asks for `@Cacheable` and `@CacheEvict`; `@CachePut` is used on top for updates.
