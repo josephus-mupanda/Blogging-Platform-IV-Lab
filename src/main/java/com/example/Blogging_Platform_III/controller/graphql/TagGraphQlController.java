@@ -1,7 +1,7 @@
 package com.example.Blogging_Platform_III.controller.graphql;
 
 import com.example.Blogging_Platform_III.dto.TagInput;
-import com.example.Blogging_Platform_III.model.TagResponse;
+import com.example.Blogging_Platform_III.entity.Tag;
 import com.example.Blogging_Platform_III.service.TagService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -19,28 +19,28 @@ public class TagGraphQlController {
     }
 
     @QueryMapping
-    public List<TagResponse> tags() {
+    public List<Tag> tags() {
         return tags.list();
     }
 
     @QueryMapping
-    public TagResponse tag(@Argument long id) {
+    public Tag tag(@Argument Long id) {
         return tags.get(id);
     }
 
     @MutationMapping
-    public TagResponse createTag(@Argument @Valid TagInput input) {
+    public Tag createTag(@Argument @Valid TagInput input) {
         return tags.create(input.getName());
     }
 
     @MutationMapping
-    public TagResponse updateTag(@Argument long id, @Argument @Valid TagInput input) {
+    public Tag updateTag(@Argument Long id, @Argument @Valid TagInput input) {
         return tags.update(id, input.getName());
     }
 
     @MutationMapping
-    public boolean deleteTag(@Argument long id) {
-        tags.archive(id);
+    public boolean deleteTag(@Argument Long id) {
+        tags.delete(id);
         return true;
     }
 }

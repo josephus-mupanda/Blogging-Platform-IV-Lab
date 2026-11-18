@@ -1,22 +1,19 @@
 package com.example.Blogging_Platform_III.repository;
 
 import com.example.Blogging_Platform_III.entity.Tag;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
-/** Tags in PostgreSQL. All methods are derived queries. "Visible" means deleted_at IS NULL. */
 public interface TagRepository extends JpaRepository<Tag, Long> {
 
-    /** WHERE deleted_at IS NULL ORDER BY name, tag_id */
-    List<Tag> findByDeletedAtIsNullOrderByNameAscIdAsc();
-
-    Optional<Tag> findByIdAndDeletedAtIsNull(Long id);
-
-    /** Uses the unique index on tags.name. */
-    Optional<Tag> findByNameAndDeletedAtIsNull(String name);
-
-    /** WHERE tag_id IN (...) AND deleted_at IS NULL. Loads all the tags of a post in one query. */
-    List<Tag> findByIdInAndDeletedAtIsNull(Collection<Long> ids);
+    /**
+     * Native SQL query: plain PostgreSQL SQL on the table names.
+     * The join table post_tags has no entity class, so JPQL cannot reach it. Before a tag is
+     * deleted, this removes it from every post. @Modifying is needed for DELETE and UPDATE.
+     */
+    @Modifying
+    @Query(value = "DELETE FROM post_tags WHERE tag_id = :tagId", nativeQuery = true)
+    void removeTagFromPosts(@Param("tagId") Long tagId);
 }

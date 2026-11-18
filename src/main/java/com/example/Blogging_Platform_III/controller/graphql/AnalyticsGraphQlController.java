@@ -1,7 +1,7 @@
 package com.example.Blogging_Platform_III.controller.graphql;
 
-import com.example.Blogging_Platform_III.model.Dashboard;
 import com.example.Blogging_Platform_III.service.AnalyticsService;
+import java.util.Map;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
@@ -13,8 +13,9 @@ public class AnalyticsGraphQlController {
         this.analytics = analytics;
     }
 
+    /** GraphQL reads the fields users, posts, tags... from the map keys. */
     @QueryMapping
-    public Dashboard dashboard() {
+    public Map<String, Long> dashboard() {
         return analytics.dashboard();
     }
 }

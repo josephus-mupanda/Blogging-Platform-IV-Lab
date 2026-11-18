@@ -1,14 +1,14 @@
 
 type Query {
-  posts(filter: PostFilter): PostPage!
+  posts(keyword: String, page: Int = 0, size: Int = 10): PostPage!
   post(id: ID!): Post
   users: [User!]!
   user(id: ID!): User
   tags: [Tag!]!
   tag(id: ID!): Tag
-  comments(postId: ID!, page: Int, size: Int): CommentPage!
+  comments(postId: ID!, page: Int = 0, size: Int = 10): CommentPage!
   comment(postId: ID!, id: ID!): Comment
-  reviews(postId: ID!): Discussion
+  reviews(postId: ID!): [Review!]!
   dashboard: Dashboard
 }
 
@@ -28,30 +28,23 @@ type Mutation {
   addReview(postId: ID!, reviewerId: ID!, input: ReviewInput!): Review
 }
 
-enum Sort { NEWEST OLDEST TITLE_ASC TITLE_DESC }
-
 input UserCreate { username: String!, email: String!, displayName: String! }
 input UserUpdate { email: String!, displayName: String! }
 input PostInput { title: String!, body: String!, tagIds: [ID!] }
-input PostFilter { keyword: String, authorId: ID, tagId: ID, page: Int, size: Int, sort: Sort }
 input TagInput { name: String! }
 input CommentInput { body: String! }
 input ReviewInput { rating: Int!, text: String }
 
 type User { id: ID!, username: String!, displayName: String! }
-type Post { id: ID!, authorId: ID!, title: String!, body: String!, createdAt: String!, updatedAt: String!, tags: [Tag!]! }
-type PostPage { items: [Post!]!, page: Int!, size: Int!, totalElements: Long!, totalPages: Long! }
 type Tag { id: ID!, name: String! }
+type Post { id: ID!, title: String!, body: String!, author: User!, tags: [Tag!]!, createdAt: String, updatedAt: String }
 type Comment { id: ID!, postId: ID!, authorId: ID!, authorName: String!, body: String!, createdAt: String! }
-type CommentPage { items: [Comment!]!, page: Int!, size: Int!, totalElements: Long!, totalPages: Long! }
 type Review { id: ID!, postId: ID!, reviewerId: ID!, reviewerName: String!, rating: Int!, text: String, createdAt: String! }
-type Discussion { reviews: [Review!]!, averageRating: Float! }
-type Dashboard {
-  users: Long!
-  posts: Long!
-  tags: Long!
-  comments: Long!
-  reviews: Long!
-}
+
+# A Spring Data Page: GraphQL reads content, number, size, totalElements and totalPages from it.
+type PostPage { content: [Post!]!, number: Int!, size: Int!, totalElements: Long!, totalPages: Int! }
+type CommentPage { content: [Comment!]!, number: Int!, size: Int!, totalElements: Long!, totalPages: Int! }
+
+type Dashboard { users: Long!, posts: Long!, tags: Long!, comments: Long!, reviews: Long! }
 
 scalar Long

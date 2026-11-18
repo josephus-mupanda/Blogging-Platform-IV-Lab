@@ -4,7 +4,7 @@ import static com.example.Blogging_Platform_III.controller.rest.ApiResponse.ok;
 
 import com.example.Blogging_Platform_III.dto.UserCreate;
 import com.example.Blogging_Platform_III.dto.UserUpdate;
-import com.example.Blogging_Platform_III.model.UserResponse;
+import com.example.Blogging_Platform_III.entity.User;
 import com.example.Blogging_Platform_III.service.UserService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -29,28 +29,28 @@ public class UserController {
     }
 
     @GetMapping
-    ApiResponse<List<UserResponse>> list() {
+    ApiResponse<List<User>> list() {
         return ok("Users found.", users.list());
     }
 
     @GetMapping("/{id}")
-    ApiResponse<UserResponse> get(@PathVariable long id) {
+    ApiResponse<User> get(@PathVariable Long id) {
         return ok("User found.", users.get(id));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<UserResponse> create(@Valid @RequestBody UserCreate input) {
+    ApiResponse<User> create(@Valid @RequestBody UserCreate input) {
         return ok("User created.", users.create(input.getUsername(), input.getEmail(), input.getDisplayName()));
     }
 
     @PutMapping("/{id}")
-    ApiResponse<UserResponse> update(@PathVariable long id, @Valid @RequestBody UserUpdate input) {
+    ApiResponse<User> update(@PathVariable Long id, @Valid @RequestBody UserUpdate input) {
         return ok("User updated.", users.update(id, input.getEmail(), input.getDisplayName()));
     }
 
     @DeleteMapping("/{id}")
-    ApiResponse<Void> delete(@PathVariable long id) {
+    ApiResponse<Void> delete(@PathVariable Long id) {
         users.delete(id);
         return ok("User deleted.", null);
     }

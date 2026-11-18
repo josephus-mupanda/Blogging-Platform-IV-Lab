@@ -1,26 +1,18 @@
 package com.example.Blogging_Platform_III.service;
 
-import com.example.Blogging_Platform_III.config.CacheConfig;
 import com.example.Blogging_Platform_III.entity.Post;
 import com.example.Blogging_Platform_III.entity.Tag;
 import com.example.Blogging_Platform_III.entity.User;
 import com.example.Blogging_Platform_III.exception.BlogException;
-import com.example.Blogging_Platform_III.model.PostFilter;
-import com.example.Blogging_Platform_III.model.PostPage;
-import com.example.Blogging_Platform_III.model.PostResponse;
-import com.example.Blogging_Platform_III.model.Sort;
+import com.example.Blogging_Platform_III.repository.CommentRepository;
 import com.example.Blogging_Platform_III.repository.PostRepository;
+import com.example.Blogging_Platform_III.repository.ReviewRepository;
 import com.example.Blogging_Platform_III.repository.TagRepository;
 import com.example.Blogging_Platform_III.repository.UserRepository;
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -30,148 +22,88 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PostService {
     private final PostRepository posts;
-    private final TagRepository tags;
     private final UserRepository users;
+    private final TagRepository tags;
+    private final CommentRepository comments;
+    private final ReviewRepository reviews;
 
-    public PostService(PostRepository posts, TagRepository tags, UserRepository users) {
+    public PostService(PostRepository posts, UserRepository users, TagRepository tags,
+                       CommentRepository comments, ReviewRepository reviews) {
         this.posts = posts;
-        this.tags = tags;
         this.users = users;
+        this.tags = tags;
+        this.comments = comments;
+        this.reviews = reviews;
     }
 
-    /** Search with optional keyword, author and tag filters, sorted and paginated. */
-    @Transactional(readOnly = true)
-    public PostPage search(PostFilter filter) {
-        PostFilter given = filter == null ? new PostFilter() : filter;
-        Pageable pageable = pageRequest(given.getPage(), given.getSize(), given.getSort());
-        if (given.getKeyword() != null && given.getKeyword().length() > 200) {
-            throw BlogException.badRequest("Search keywords must be at most 200 characters.");
+    /** One page of posts. With a keyword, only the posts that contain it (JPQL query). */
+    public Page<Post> list(String keyword, Pageable pageable) {
+        if (keyword == null || keyword.isBlank()) {
+            return posts.findAll(pageable);
         }
-        if ((given.getAuthorId() != null && given.getAuthorId() <= 0)
-                || (given.getTagId() != null && given.getTagId() <= 0)) {
-            throw BlogException.badRequest("Author and tag filters must be positive IDs.");
-        }
-        return toPage(posts.search(likePattern(given.getKeyword()), given.getAuthorId(), given.getTagId(), pageable));
+        return posts.searchByKeyword(keyword.trim(), pageable);
     }
 
-    /** Posts of one author, by username. Uses the derived query findByAuthorUsername... */
-    @Transactional(readOnly = true)
-    public PostPage byAuthor(String username, Integer page, Integer size, Sort sort) {
-        Pageable pageable = pageRequest(page, size, sort);
-        users.findByUsernameAndActiveTrue(username).orElseThrow(() -> BlogException.notFound("Author"));
-        return toPage(posts.findByAuthorUsernameAndDeletedAtIsNull(username, pageable));
+    public Page<Post> byAuthor(String username, Pageable pageable) {
+        return posts.findByAuthorUsername(username, pageable);
     }
 
-    /** Posts with one tag, by tag name. Uses the derived query findByTagsName... */
-    @Transactional(readOnly = true)
-    public PostPage byTag(String name, Integer page, Integer size, Sort sort) {
-        Pageable pageable = pageRequest(page, size, sort);
-        String tagName = name.trim().toLowerCase(Locale.ROOT);
-        tags.findByNameAndDeletedAtIsNull(tagName).orElseThrow(() -> BlogException.notFound("Tag"));
-        return toPage(posts.findByTagsNameAndDeletedAtIsNull(tagName, pageable));
+    public Page<Post> byTag(String tagName, Pageable pageable) {
+        return posts.findByTagsName(tagName.trim().toLowerCase(), pageable);
     }
 
-    /** Frequently read posts are served from the cache after their first read. */
-    @Transactional(readOnly = true)
-    @Cacheable(cacheNames = CacheConfig.POSTS, key = "#id")
-    public PostResponse get(long id) {
-        return PostResponse.from(posts.findVisibleWithTags(id).orElseThrow(() -> BlogException.notFound("Post")));
+    /** Cached: a post is read from the database once, then from the "posts" cache. */
+    @Cacheable(value = "posts", key = "#id")
+    public Post get(Long id) {
+        return posts.findById(id).orElseThrow(() -> BlogException.notFound("Post"));
     }
 
     /**
-     * The post row and its post_tags rows are written in one transaction (REQUIRED).
-     * If any statement fails, for example because the title is already used, every statement
-     * of the method is rolled back and nothing is saved.
-     * A new post is not in any cache yet, so there is nothing to evict.
+     * Propagation REQUIRED (the default): the method runs in one transaction.
+     * The post is inserted first, then its tags are added. If a tag does not exist, the
+     * exception rolls the transaction back and the post that was just inserted disappears.
      */
     @Transactional(propagation = Propagation.REQUIRED)
-    public PostResponse create(long authorId, String title, String body, List<Long> tagIds) {
-        User author = users.findByIdAndActiveTrue(authorId).orElseThrow(() -> BlogException.notFound("Author"));
-        Post post = new Post(author, title, body);
-        post.getTags().addAll(visibleTags(tagIds));
-        try {
-            return PostResponse.from(posts.saveAndFlush(post));
-        } catch (DataIntegrityViolationException exception) {
-            throw BlogException.duplicateValue();
-        }
+    public Post create(Long authorId, String title, String body, List<Long> tagIds) {
+        User author = users.findById(authorId).orElseThrow(() -> BlogException.notFound("Author"));
+        Post post = posts.save(new Post(author, title, body));
+        addTags(post, tagIds);
+        return post;
     }
 
     /**
-     * REPEATABLE_READ: the transaction keeps working with the post as it was when it read it.
-     * If another request changes and commits the same post in the meantime, PostgreSQL refuses
-     * this UPDATE instead of silently overwriting the other change (a "lost update").
-     * ApiErrors turns that refusal into HTTP 409, and the whole transaction is rolled back.
+     * Isolation READ_COMMITTED: this transaction only reads data that other transactions have
+     * already committed. If someone else saves the same post at the same time, the @Version
+     * column in Post makes Hibernate refuse the second save (HTTP 409).
      */
-    @Transactional(isolation = Isolation.REPEATABLE_READ)
-    @CacheEvict(cacheNames = CacheConfig.POSTS, key = "#id")
-    public PostResponse update(long id, String title, String body, List<Long> tagIds) {
-        Post post = posts.findVisibleWithTags(id).orElseThrow(() -> BlogException.notFound("Post"));
-        List<Tag> selected = visibleTags(tagIds);
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @CacheEvict(value = "posts", key = "#id")
+    public Post update(Long id, String title, String body, List<Long> tagIds) {
+        Post post = posts.findById(id).orElseThrow(() -> BlogException.notFound("Post"));
         post.setTitle(title);
         post.setBody(body);
-        post.setUpdatedAt(LocalDateTime.now());
         post.getTags().clear();
-        post.getTags().addAll(selected);
-        try {
-            return PostResponse.from(posts.saveAndFlush(post));
-        } catch (DataIntegrityViolationException exception) {
-            throw BlogException.duplicateValue();
-        }
+        addTags(post, tagIds);
+        return posts.save(post);
     }
 
-    /** A soft delete: deleted_at is set and the post disappears from the cache. */
+    /** Deletes the post (and its post_tags rows), then its comments and reviews in MongoDB. */
     @Transactional
-    @CacheEvict(cacheNames = CacheConfig.POSTS, key = "#id")
-    public void archive(long id) {
-        Post post = posts.findByIdAndDeletedAtIsNull(id).orElseThrow(() -> BlogException.notFound("Post"));
-        post.setDeletedAt(Instant.now());
+    @CacheEvict(value = "posts", key = "#id")
+    public void delete(Long id) {
+        Post post = posts.findById(id).orElseThrow(() -> BlogException.notFound("Post"));
+        posts.delete(post);
+        comments.deleteByPostId(id);
+        reviews.deleteByPostId(id);
     }
 
-    /** Checks the paging values and builds the Pageable that the repository methods receive. */
-    private Pageable pageRequest(Integer page, Integer size, Sort sort) {
-        int pageNumber = page == null ? 0 : page;
-        int pageSize = size == null ? 10 : size;
-        if (pageNumber < 0 || pageSize < 1 || pageSize > 100) {
-            throw BlogException.badRequest("Use a nonnegative page and a page size between 1 and 100.");
+    private void addTags(Post post, List<Long> tagIds) {
+        if (tagIds == null) {
+            return;
         }
-        Sort order = sort == null ? Sort.NEWEST : sort;
-        return PageRequest.of(pageNumber, pageSize, order.toSpringSort());
-    }
-
-    /**
-     * Converts a page of entities into the response. The tags of all the posts on the page are
-     * loaded with one JOIN FETCH query, instead of one query per post.
-     */
-    private PostPage toPage(Page<Post> page) {
-        if (!page.isEmpty()) {
-            posts.findWithTags(page.getContent().stream().map(Post::getId).toList());
+        for (Long tagId : tagIds) {
+            Tag tag = tags.findById(tagId).orElseThrow(() -> BlogException.notFound("Tag " + tagId));
+            post.getTags().add(tag);
         }
-        return PostPage.of(page, page.getContent().stream().map(PostResponse::from).toList());
-    }
-
-    /**
-     * Turns a keyword into a LIKE pattern: lowercase, wrapped in %, and with the characters
-     * % and _ escaped by '!' so they are searched as normal characters.
-     */
-    private String likePattern(String keyword) {
-        if (keyword == null || keyword.isBlank()) {
-            return null;
-        }
-        String escaped = keyword.strip().toLowerCase(Locale.ROOT)
-                .replace("!", "!!").replace("%", "!%").replace("_", "!_");
-        return "%" + escaped + "%";
-    }
-
-    /** Loads the selected tags in one query and checks that every one of them is available. */
-    private List<Tag> visibleTags(List<Long> tagIds) {
-        List<Long> ids = tagIds == null ? List.of() : tagIds.stream().distinct().toList();
-        if (ids.isEmpty()) {
-            return List.of();
-        }
-        List<Tag> found = tags.findByIdInAndDeletedAtIsNull(ids);
-        if (found.size() != ids.size()) {
-            throw BlogException.badRequest("Select tags that are available.");
-        }
-        return found;
     }
 }

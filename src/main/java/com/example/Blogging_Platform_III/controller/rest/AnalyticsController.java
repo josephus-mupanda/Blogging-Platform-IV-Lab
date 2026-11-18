@@ -2,8 +2,8 @@ package com.example.Blogging_Platform_III.controller.rest;
 
 import static com.example.Blogging_Platform_III.controller.rest.ApiResponse.ok;
 
-import com.example.Blogging_Platform_III.model.Dashboard;
 import com.example.Blogging_Platform_III.service.AnalyticsService;
+import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,7 +18,7 @@ public class AnalyticsController {
     }
 
     @GetMapping("/dashboard")
-    ApiResponse<Dashboard> dashboard() {
+    ApiResponse<Map<String, Long>> dashboard() {
         return ok("Dashboard calculated.", analytics.dashboard());
     }
 }

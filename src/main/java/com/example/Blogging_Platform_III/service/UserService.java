@@ -1,94 +1,66 @@
 package com.example.Blogging_Platform_III.service;
 
-import com.example.Blogging_Platform_III.config.CacheConfig;
 import com.example.Blogging_Platform_III.entity.User;
 import com.example.Blogging_Platform_III.exception.BlogException;
-import com.example.Blogging_Platform_III.model.UserResponse;
+import com.example.Blogging_Platform_III.repository.PostRepository;
 import com.example.Blogging_Platform_III.repository.UserRepository;
 import java.util.List;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {
     private final UserRepository users;
+    private final PostRepository posts;
 
-    public UserService(UserRepository users) {
+    public UserService(UserRepository users, PostRepository posts) {
         this.users = users;
+        this.posts = posts;
     }
 
-    /** Cached: the list is read from PostgreSQL once, then from memory until a user changes. */
-    @Transactional(readOnly = true)
-    @Cacheable(cacheNames = CacheConfig.USER_LIST)
-    public List<UserResponse> list() {
-        return users.findByActiveTrueOrderByUsernameAscIdAsc().stream().map(UserResponse::from).toList();
+    public List<User> list() {
+        return users.findAll(Sort.by("username"));
     }
 
-    /** Cached by user ID. */
-    @Transactional(readOnly = true)
-    @Cacheable(cacheNames = CacheConfig.USERS, key = "#id")
-    public UserResponse get(long id) {
-        return UserResponse.from(findActive(id));
+    /** Cached: the first call reads the database, the next calls read the "users" cache. */
+    @Cacheable(value = "users", key = "#id")
+    public User get(Long id) {
+        return users.findById(id).orElseThrow(() -> BlogException.notFound("User"));
     }
 
-    /** A new user changes the user list, so the cached list is removed. */
     @Transactional
-    @CacheEvict(cacheNames = CacheConfig.USER_LIST, allEntries = true)
-    public UserResponse create(String username, String email, String displayName) {
-        try {
-            // saveAndFlush sends the INSERT now, so a unique-key error is caught here.
-            return UserResponse.from(users.saveAndFlush(new User(username, email, displayName)));
-        } catch (DataIntegrityViolationException exception) {
-            throw BlogException.duplicateValue();
-        }
+    public User create(String username, String email, String displayName) {
+        return users.save(new User(username, email, displayName));
     }
 
-    /** Removes the cached copy of this user and the cached list. */
+    /** The cached copy of this user is removed, so the next read gets the new values. */
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(cacheNames = CacheConfig.USERS, key = "#id"),
-            @CacheEvict(cacheNames = CacheConfig.USER_LIST, allEntries = true)})
-    public UserResponse update(long id, String email, String displayName) {
-        User user = findActive(id);
-        if (users.existsByEmailAndIdNot(email, id)) {
-            throw BlogException.conflict("This email is already registered.");
-        }
+    @CacheEvict(value = "users", key = "#id")
+    public User update(Long id, String email, String displayName) {
+        User user = users.findById(id).orElseThrow(() -> BlogException.notFound("User"));
         user.setEmail(email);
         user.setDisplayName(displayName);
-        try {
-            return UserResponse.from(users.saveAndFlush(user));
-        } catch (DataIntegrityViolationException exception) {
-            throw BlogException.duplicateValue();
-        }
+        return users.save(user);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
+    @CacheEvict(value = "users", key = "#id")
+    public void delete(Long id) {
+        User user = users.findById(id).orElseThrow(() -> BlogException.notFound("User"));
+        if (posts.existsByAuthorId(id)) {
+            throw BlogException.conflict("This user still has posts. Delete the posts first.");
+        }
+        users.delete(user);
+    }
+
     public boolean usernameExists(String username) {
         return users.existsByUsername(username);
     }
 
-    @Transactional(readOnly = true)
     public boolean emailExists(String email) {
         return users.existsByEmail(email);
-    }
-
-    /**
-     * A soft delete: the user is marked inactive. Hibernate sees the changed field and writes
-     * the UPDATE when the transaction commits, so no save call is needed.
-     */
-    @Transactional
-    @Caching(evict = {
-            @CacheEvict(cacheNames = CacheConfig.USERS, key = "#id"),
-            @CacheEvict(cacheNames = CacheConfig.USER_LIST, allEntries = true)})
-    public void delete(long id) {
-        findActive(id).setActive(false);
-    }
-
-    private User findActive(long id) {
-        return users.findByIdAndActiveTrue(id).orElseThrow(() -> BlogException.notFound("User"));
     }
 }

@@ -6,6 +6,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.ConcurrencyFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -36,14 +38,27 @@ public class ApiErrors {
     }
 
     /**
-     * Two requests changed the same post at the same time. PostService.update runs with
-     * REPEATABLE_READ isolation, so PostgreSQL refuses the second change instead of letting it
-     * silently overwrite the first. The transaction is rolled back and the client can retry.
+     * Two requests saved the same post at the same time. The @Version column in Post makes
+     * Hibernate refuse the second save. The transaction is rolled back and the client can retry.
      */
     @ExceptionHandler(ConcurrencyFailureException.class)
     public ResponseEntity<ApiResponse<Void>> concurrentChange(ConcurrencyFailureException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error("The record was changed by another request. Load it again and retry.", null));
+    }
+
+    /** A unique column (post title, tag name, username, email) already has this value. */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> duplicateValue(DataIntegrityViolationException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error("A record already uses this value.", null));
+    }
+
+    /** The client asked to sort by a field that does not exist, for example ?sort=color. */
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<ApiResponse<Void>> unknownSortField(PropertyReferenceException exception) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Cannot sort by '" + exception.getPropertyName() + "'.", null));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -1,11 +1,12 @@
 package com.example.Blogging_Platform_III.controller.graphql;
 
 import com.example.Blogging_Platform_III.dto.PostInput;
-import com.example.Blogging_Platform_III.model.PostFilter;
-import com.example.Blogging_Platform_III.model.PostPage;
-import com.example.Blogging_Platform_III.model.PostResponse;
+import com.example.Blogging_Platform_III.entity.Post;
 import com.example.Blogging_Platform_III.service.PostService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -19,29 +20,30 @@ public class PostGraphQlController {
         this.posts = posts;
     }
 
+    /** One page of posts, newest first. page and size have default values in the schema. */
     @QueryMapping
-    public PostPage posts(@Argument PostFilter filter) {
-        return posts.search(filter);
+    public Page<Post> posts(@Argument String keyword, @Argument int page, @Argument int size) {
+        return posts.list(keyword, PageRequest.of(page, size, Sort.by("createdAt").descending()));
     }
 
     @QueryMapping
-    public PostResponse post(@Argument long id) {
+    public Post post(@Argument Long id) {
         return posts.get(id);
     }
 
     @MutationMapping
-    public PostResponse createPost(@Argument long authorId, @Argument @Valid PostInput input) {
+    public Post createPost(@Argument Long authorId, @Argument @Valid PostInput input) {
         return posts.create(authorId, input.getTitle(), input.getBody(), input.getTagIds());
     }
 
     @MutationMapping
-    public PostResponse updatePost(@Argument long id, @Argument @Valid PostInput input) {
+    public Post updatePost(@Argument Long id, @Argument @Valid PostInput input) {
         return posts.update(id, input.getTitle(), input.getBody(), input.getTagIds());
     }
 
     @MutationMapping
-    public boolean deletePost(@Argument long id) {
-        posts.archive(id);
+    public boolean deletePost(@Argument Long id) {
+        posts.delete(id);
         return true;
     }
 }

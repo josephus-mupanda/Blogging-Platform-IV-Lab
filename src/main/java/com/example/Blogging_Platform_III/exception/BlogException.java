@@ -26,8 +26,4 @@ public class BlogException extends RuntimeException {
     public static BlogException conflict(String message) {
         return new BlogException(Code.CONFLICT, message);
     }
-
-    public static BlogException duplicateValue() {
-        return conflict("A record already uses this value.");
-    }
 }

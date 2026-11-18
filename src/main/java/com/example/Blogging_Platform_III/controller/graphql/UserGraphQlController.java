@@ -2,7 +2,7 @@ package com.example.Blogging_Platform_III.controller.graphql;
 
 import com.example.Blogging_Platform_III.dto.UserCreate;
 import com.example.Blogging_Platform_III.dto.UserUpdate;
-import com.example.Blogging_Platform_III.model.UserResponse;
+import com.example.Blogging_Platform_III.entity.User;
 import com.example.Blogging_Platform_III.service.UserService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -20,27 +20,27 @@ public class UserGraphQlController {
     }
 
     @QueryMapping
-    public List<UserResponse> users() {
+    public List<User> users() {
         return users.list();
     }
 
     @QueryMapping
-    public UserResponse user(@Argument long id) {
+    public User user(@Argument Long id) {
         return users.get(id);
     }
 
     @MutationMapping
-    public UserResponse createUser(@Argument @Valid UserCreate input) {
+    public User createUser(@Argument @Valid UserCreate input) {
         return users.create(input.getUsername(), input.getEmail(), input.getDisplayName());
     }
 
     @MutationMapping
-    public UserResponse updateUser(@Argument long id, @Argument @Valid UserUpdate input) {
+    public User updateUser(@Argument Long id, @Argument @Valid UserUpdate input) {
         return users.update(id, input.getEmail(), input.getDisplayName());
     }
 
     @MutationMapping
-    public boolean deleteUser(@Argument long id) {
+    public boolean deleteUser(@Argument Long id) {
         users.delete(id);
         return true;
     }

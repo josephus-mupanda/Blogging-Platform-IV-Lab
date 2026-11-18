@@ -3,7 +3,7 @@ package com.example.Blogging_Platform_III.controller.rest;
 import static com.example.Blogging_Platform_III.controller.rest.ApiResponse.ok;
 
 import com.example.Blogging_Platform_III.dto.TagInput;
-import com.example.Blogging_Platform_III.model.TagResponse;
+import com.example.Blogging_Platform_III.entity.Tag;
 import com.example.Blogging_Platform_III.service.TagService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -28,29 +28,29 @@ public class TagController {
     }
 
     @GetMapping
-    ApiResponse<List<TagResponse>> list() {
+    ApiResponse<List<Tag>> list() {
         return ok("Tags found.", tags.list());
     }
 
     @GetMapping("/{id}")
-    ApiResponse<TagResponse> get(@PathVariable long id) {
+    ApiResponse<Tag> get(@PathVariable Long id) {
         return ok("Tag found.", tags.get(id));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<TagResponse> create(@Valid @RequestBody TagInput input) {
+    ApiResponse<Tag> create(@Valid @RequestBody TagInput input) {
         return ok("Tag created.", tags.create(input.getName()));
     }
 
     @PutMapping("/{id}")
-    ApiResponse<TagResponse> update(@PathVariable long id, @Valid @RequestBody TagInput input) {
+    ApiResponse<Tag> update(@PathVariable Long id, @Valid @RequestBody TagInput input) {
         return ok("Tag updated.", tags.update(id, input.getName()));
     }
 
     @DeleteMapping("/{id}")
-    ApiResponse<Void> archive(@PathVariable long id) {
-        tags.archive(id);
+    ApiResponse<Void> delete(@PathVariable Long id) {
+        tags.delete(id);
         return ok("Tag deleted.", null);
     }
 }
