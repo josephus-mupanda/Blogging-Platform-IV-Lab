@@ -8,7 +8,9 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.dao.ConcurrencyFailureException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.TransactionException;
 import org.springframework.graphql.data.method.annotation.GraphQlExceptionHandler;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindException;
@@ -21,14 +23,29 @@ public class GraphQlErrors {
         return error(environment, exception.getCode().name(), exception.getMessage());
     }
 
+    // Errors that make a transaction fail: Spring has already rolled the transaction back.
+
     @GraphQlExceptionHandler
     GraphQLError concurrentChange(ConcurrencyFailureException exception, DataFetchingEnvironment environment) {
-        return error(environment, "CONFLICT", "The record was changed by another request. Load it again and retry.");
+        return error(environment, "CONFLICT",
+                "The record was changed by another request. Your change was rolled back. Load it again and retry.");
     }
 
     @GraphQlExceptionHandler
     GraphQLError duplicateValue(DataIntegrityViolationException exception, DataFetchingEnvironment environment) {
-        return error(environment, "CONFLICT", "A record already uses this value.");
+        return error(environment, "CONFLICT",
+                "A record already uses this value. The transaction was rolled back, nothing was saved.");
+    }
+
+    @GraphQlExceptionHandler
+    GraphQLError transactionFailed(TransactionException exception, DataFetchingEnvironment environment) {
+        return error(environment, "TRANSACTION_FAILED", "The transaction failed and was rolled back. Nothing was saved.");
+    }
+
+    @GraphQlExceptionHandler
+    GraphQLError databaseError(DataAccessException exception, DataFetchingEnvironment environment) {
+        return error(environment, "DATABASE_ERROR",
+                "A database error happened. The transaction was rolled back, nothing was saved.");
     }
 
     @GraphQlExceptionHandler

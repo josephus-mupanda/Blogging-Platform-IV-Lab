@@ -45,21 +45,21 @@ public class DiscussionService {
                 .orElseThrow(() -> BlogException.notFound("Comment"));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Comment addComment(Long postId, Long authorId, String body) {
         requirePost(postId);
         User author = users.findById(authorId).orElseThrow(() -> BlogException.notFound("Author"));
         return comments.save(new Comment(null, postId, author.getId(), author.getDisplayName(), body, Instant.now()));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Comment editComment(Long postId, String id, String body) {
         Comment comment = comment(postId, id);
         comment.setBody(body);
         return comments.save(comment);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteComment(Long postId, String id) {
         comments.delete(comment(postId, id));
     }
@@ -69,7 +69,7 @@ public class DiscussionService {
         return reviews.findByPostId(postId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Review addReview(Long postId, Long reviewerId, int rating, String text) {
         requirePost(postId);
         User reviewer = users.findById(reviewerId).orElseThrow(() -> BlogException.notFound("Reviewer"));

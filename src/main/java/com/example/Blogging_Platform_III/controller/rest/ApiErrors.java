@@ -6,11 +6,13 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.ConcurrencyFailureException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.transaction.TransactionException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -37,21 +39,46 @@ public class ApiErrors {
         return ResponseEntity.status(status).body(ApiResponse.error(exception.getMessage(), null));
     }
 
+    // ----- Errors that make a transaction fail. In every case Spring has already rolled the -----
+    // ----- transaction back before we get here, so the database is unchanged.               -----
+
     /**
      * Two requests saved the same post at the same time. The @Version column in Post makes
-     * Hibernate refuse the second save. The transaction is rolled back and the client can retry.
+     * Hibernate refuse the second save. Its transaction is rolled back and the client can retry.
      */
     @ExceptionHandler(ConcurrencyFailureException.class)
     public ResponseEntity<ApiResponse<Void>> concurrentChange(ConcurrencyFailureException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error("The record was changed by another request. Load it again and retry.", null));
+        LOG.warn("Concurrent update refused, transaction rolled back: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(
+                "The record was changed by another request. Your change was rolled back. Load it again and retry.",
+                null));
     }
 
     /** A unique column (post title, tag name, username, email) already has this value. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> duplicateValue(DataIntegrityViolationException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error("A record already uses this value.", null));
+        LOG.warn("Constraint violated, transaction rolled back: {}", exception.getMostSpecificCause().getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(
+                "A record already uses this value. The transaction was rolled back, nothing was saved.", null));
+    }
+
+    /**
+     * The transaction itself could not start or commit, for example because the database is
+     * down (CannotCreateTransactionException) or the commit failed (TransactionSystemException).
+     */
+    @ExceptionHandler(TransactionException.class)
+    public ResponseEntity<ApiResponse<Void>> transactionFailed(TransactionException exception) {
+        LOG.error("Transaction failed and was rolled back", exception);
+        return ResponseEntity.internalServerError().body(ApiResponse.error(
+                "The transaction failed and was rolled back. Nothing was saved.", null));
+    }
+
+    /** Any other database error (the most general Spring data error). */
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<ApiResponse<Void>> databaseError(DataAccessException exception) {
+        LOG.error("Database error, transaction rolled back", exception);
+        return ResponseEntity.internalServerError().body(ApiResponse.error(
+                "A database error happened. The transaction was rolled back, nothing was saved.", null));
     }
 
     /** The client asked to sort by a field that does not exist, for example ?sort=color. */

@@ -29,14 +29,14 @@ public class TagService {
     }
 
     /** A new tag changes the tag list, so the cached list is removed. */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = "tags", allEntries = true)
     public Tag create(String name) {
         return tags.save(new Tag(name));
     }
 
     /** Cached posts show tag names, so the "posts" cache is cleared too. */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = {"tags", "posts"}, allEntries = true)
     public Tag update(Long id, String name) {
         Tag tag = get(id);
@@ -48,7 +48,7 @@ public class TagService {
      * Two statements in one transaction: remove the tag from every post (native query), then
      * delete the tag. If the second statement fails, the first one is rolled back too.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = {"tags", "posts"}, allEntries = true)
     public void delete(Long id) {
         Tag tag = get(id);
