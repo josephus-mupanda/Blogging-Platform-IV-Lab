@@ -49,7 +49,7 @@ public class JsonSecurityHandlers implements AuthenticationEntryPoint, AccessDen
         write(response, HttpStatus.FORBIDDEN, "Your role is not allowed to do this.");
     }
 
-    private void write(HttpServletResponse response, HttpStatus status, String message) throws IOException {
+    void write(HttpServletResponse response, HttpStatus status, String message) throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         mapper.writeValue(response.getOutputStream(), ApiResponse.error(message, null));

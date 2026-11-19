@@ -10,6 +10,8 @@ import com.example.Blogging_Platform_IV.repository.PostRepository;
 import com.example.Blogging_Platform_IV.repository.ReviewRepository;
 import com.example.Blogging_Platform_IV.repository.UserRepository;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -102,6 +104,43 @@ public class UserService {
         users.flush();
         comments.deleteByAuthorId(id);
         reviews.deleteByReviewerId(id);
+    }
+
+    /**
+     * Google login: the account is found by its email. A person who logs in with Google for the first
+     * time gets a new account with the READER role (assigned automatically), their Google name as
+     * display name and a username made from the start of their email address. A Google account has no
+     * password here, so the account gets a long random one that nobody knows (BCrypt-hashed as usual).
+     * An existing account with the same email is reused as it is, with the role it already has.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public User findOrCreateGoogleUser(String email, String name) {
+        return users.findByEmail(email).orElseGet(() -> {
+            String username = freeUsername(email);
+            String displayName = name == null || name.isBlank() ? username : name.trim();
+            if (displayName.length() > 100) {
+                displayName = displayName.substring(0, 100);
+            }
+            String unusablePassword = UUID.randomUUID() + UUID.randomUUID().toString();
+            return users.save(new User(username, email, displayName,
+                    passwordEncoder.encode(unusablePassword), Role.READER));
+        });
+    }
+
+    /** "jane.doe@gmail.com" gives "jane.doe", or "jane.doe4821" when that name is already taken. */
+    private String freeUsername(String email) {
+        String base = email.substring(0, email.indexOf('@')).replaceAll("[^A-Za-z0-9._-]", "");
+        if (base.length() > 40) {
+            base = base.substring(0, 40);
+        }
+        if (base.length() < 3) {
+            base = base + "user";
+        }
+        String candidate = base;
+        while (users.existsByUsername(candidate)) {
+            candidate = base + ThreadLocalRandom.current().nextInt(1000, 10000);
+        }
+        return candidate;
     }
 
     public boolean usernameExists(String username) {
