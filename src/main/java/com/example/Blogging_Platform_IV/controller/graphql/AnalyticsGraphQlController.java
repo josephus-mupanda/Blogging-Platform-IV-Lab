@@ -1,5 +1,6 @@
 package com.example.Blogging_Platform_IV.controller.graphql;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.example.Blogging_Platform_IV.service.AnalyticsService;
 import java.util.Map;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -14,6 +15,7 @@ public class AnalyticsGraphQlController {
     }
 
     /** GraphQL reads the fields users, posts, tags... from the map keys. */
+    @PreAuthorize("hasRole('ADMIN')")
     @QueryMapping
     public Map<String, Long> dashboard() {
         return analytics.dashboard();

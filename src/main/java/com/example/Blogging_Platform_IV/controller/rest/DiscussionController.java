@@ -1,5 +1,6 @@
 package com.example.Blogging_Platform_IV.controller.rest;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import static com.example.Blogging_Platform_IV.controller.rest.ApiResponse.ok;
 
 import com.example.Blogging_Platform_IV.dto.CommentInput;
@@ -36,46 +37,53 @@ public class DiscussionController {
     }
 
     /** One page of comments, oldest first by default. */
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @GetMapping("/comments")
     @Operation(summary = "List the comments of a post, paginated", description = "Derived query CommentRepository.findByPostId.")
-    ApiResponse<Page<Comment>> comments(@PathVariable Long postId,
+    public ApiResponse<Page<Comment>> comments(@PathVariable Long postId,
                                         @ParameterObject @PageableDefault(size = 10, sort = "createdAt")
                                         Pageable pageable) {
         return ok("Comments found.", discussion.comments(postId, pageable));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @GetMapping("/comments/{id}")
-    ApiResponse<Comment> comment(@PathVariable Long postId, @PathVariable String id) {
+    public ApiResponse<Comment> comment(@PathVariable Long postId, @PathVariable String id) {
         return ok("Comment found.", discussion.comment(postId, id));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @PostMapping("/comments")
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<Comment> createComment(@PathVariable Long postId, @RequestParam Long authorId,
+    public ApiResponse<Comment> createComment(@PathVariable Long postId, @RequestParam Long authorId,
                                        @Valid @RequestBody CommentInput input) {
         return ok("Comment created.", discussion.addComment(postId, authorId, input.getBody()));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @PutMapping("/comments/{id}")
-    ApiResponse<Comment> updateComment(@PathVariable Long postId, @PathVariable String id,
+    public ApiResponse<Comment> updateComment(@PathVariable Long postId, @PathVariable String id,
                                        @Valid @RequestBody CommentInput input) {
         return ok("Comment updated.", discussion.editComment(postId, id, input.getBody()));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @DeleteMapping("/comments/{id}")
-    ApiResponse<Void> deleteComment(@PathVariable Long postId, @PathVariable String id) {
+    public ApiResponse<Void> deleteComment(@PathVariable Long postId, @PathVariable String id) {
         discussion.deleteComment(postId, id);
         return ok("Comment deleted.", null);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @GetMapping("/reviews")
-    ApiResponse<List<Review>> reviews(@PathVariable Long postId) {
+    public ApiResponse<List<Review>> reviews(@PathVariable Long postId) {
         return ok("Reviews found.", discussion.reviews(postId));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @PostMapping("/reviews")
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<Review> createReview(@PathVariable Long postId, @RequestParam Long reviewerId,
+    public ApiResponse<Review> createReview(@PathVariable Long postId, @RequestParam Long reviewerId,
                                      @Valid @RequestBody ReviewInput input) {
         return ok("Review created.", discussion.addReview(postId, reviewerId, input.getRating(), input.getText()));
     }
