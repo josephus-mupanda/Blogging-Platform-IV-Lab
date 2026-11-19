@@ -1,6 +1,8 @@
 package com.example.Blogging_Platform_IV.controller.rest;
 
 import com.example.Blogging_Platform_IV.exception.BlogException;
+import com.example.Blogging_Platform_IV.security.SecurityEvents;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -14,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.TransactionException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
@@ -27,6 +30,12 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @RestControllerAdvice
 public class ApiErrors {
     private static final Logger LOG = LoggerFactory.getLogger(ApiErrors.class);
+
+    private final SecurityEvents events;
+
+    public ApiErrors(SecurityEvents events) {
+        this.events = events;
+    }
 
     @ExceptionHandler(BlogException.class)
     public ResponseEntity<ApiResponse<Void>> businessError(BlogException exception) {
@@ -46,7 +55,8 @@ public class ApiErrors {
      * Without this handler the catch-all below would turn it into a 500.
      */
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<Void>> forbidden(AccessDeniedException exception) {
+    public ResponseEntity<ApiResponse<Void>> forbidden(AccessDeniedException exception, HttpServletRequest request) {
+        events.accessDenied(SecurityContextHolder.getContext().getAuthentication().getName(), request.getRequestURI());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.error("Your role is not allowed to do this.", null));
     }

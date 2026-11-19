@@ -21,15 +21,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class JsonSecurityHandlers implements AuthenticationEntryPoint, AccessDeniedHandler {
     private final ObjectMapper mapper;
+    private final SecurityEvents events;
 
-    public JsonSecurityHandlers(ObjectMapper mapper) {
+    public JsonSecurityHandlers(ObjectMapper mapper, SecurityEvents events) {
         this.mapper = mapper;
+        this.events = events;
     }
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException exception) throws IOException {
         Object reason = request.getAttribute(JwtAuthenticationFilter.TOKEN_ERROR);
+        // A rejected token was already logged by the filter. Only a request with no token is logged here.
+        if (reason == null) {
+            events.unauthenticatedRequest(request.getRemoteAddr(), request.getRequestURI());
+        }
         String message = reason != null ? reason.toString() : "Log in first: send a Bearer token.";
         response.setHeader("WWW-Authenticate", "Bearer");
         write(response, HttpStatus.UNAUTHORIZED, message);
@@ -38,6 +44,8 @@ public class JsonSecurityHandlers implements AuthenticationEntryPoint, AccessDen
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException exception) throws IOException {
+        events.accessDenied(request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : "unknown",
+                request.getRequestURI());
         write(response, HttpStatus.FORBIDDEN, "Your role is not allowed to do this.");
     }
 

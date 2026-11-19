@@ -9,10 +9,12 @@ import com.example.Blogging_Platform_IV.entity.User;
 import com.example.Blogging_Platform_IV.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,7 +42,15 @@ public class AuthController {
     @SecurityRequirements
     @Operation(summary = "Log in and receive a JWT (public)",
             description = "Send the token in the header 'Authorization: Bearer <token>'. 401 when the credentials are wrong.")
-    public ApiResponse<AuthToken> login(@Valid @RequestBody LoginRequest input) {
-        return ok("Login successful.", auth.login(input.username(), input.password()));
+    public ApiResponse<AuthToken> login(@Valid @RequestBody LoginRequest input, HttpServletRequest request) {
+        return ok("Login successful.", auth.login(input.username(), input.password(), request.getRemoteAddr()));
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Log out: the token stops working",
+            description = "The token is added to the in-memory blacklist until it expires. Later requests with it get 401.")
+    public ApiResponse<Void> logout(@RequestHeader("Authorization") String authorization) {
+        auth.logout(authorization.substring("Bearer ".length()).trim());
+        return ok("Logged out. This token is no longer accepted.", null);
     }
 }

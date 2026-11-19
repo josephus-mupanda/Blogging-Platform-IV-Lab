@@ -72,7 +72,8 @@ public class SecurityConfig {
      * - Which role may call which endpoint is decided by @PreAuthorize on the controller methods.
      */
     @Bean
-    SecurityFilterChain api(HttpSecurity http, JwtService jwt, JsonSecurityHandlers handlers) throws Exception {
+    SecurityFilterChain api(HttpSecurity http, JwtService jwt, TokenBlacklist blacklist, SecurityEvents events,
+                            JsonSecurityHandlers handlers) throws Exception {
         return http
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
@@ -87,7 +88,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(handlers))
                 // Not a @Component: Spring Boot would also register a filter bean on its own,
                 // outside the security chain.
-                .addFilterBefore(new JwtAuthenticationFilter(jwt), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JwtAuthenticationFilter(jwt, blacklist, events), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }

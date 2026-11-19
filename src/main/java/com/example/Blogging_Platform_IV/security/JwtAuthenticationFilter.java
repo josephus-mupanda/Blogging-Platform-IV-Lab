@@ -29,9 +29,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     static final String TOKEN_ERROR = "jwt.error";
 
     private final JwtService jwt;
+    private final TokenBlacklist blacklist;
+    private final SecurityEvents events;
 
-    public JwtAuthenticationFilter(JwtService jwt) {
+    public JwtAuthenticationFilter(JwtService jwt, TokenBlacklist blacklist, SecurityEvents events) {
         this.jwt = jwt;
+        this.blacklist = blacklist;
+        this.events = events;
     }
 
     @Override
@@ -42,6 +46,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring("Bearer ".length()).trim();
             try {
                 Claims claims = jwt.parse(token);
+                if (blacklist.isRevoked(token)) {
+                    reject(request, "The token was revoked by a logout. Log in again.");
+                    chain.doFilter(request, response);
+                    return;
+                }
                 List<?> roles = claims.get("roles", List.class);
                 List<GrantedAuthority> authorities = roles == null ? List.of() : roles.stream()
                         .<GrantedAuthority>map(role -> new SimpleGrantedAuthority("ROLE_" + role)).toList();
@@ -49,12 +58,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(claims.getSubject(), null, authorities);
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                events.tokenUsed(claims.getSubject(), request.getRequestURI());
             } catch (ExpiredJwtException e) {
-                request.setAttribute(TOKEN_ERROR, "The token has expired. Log in again.");
+                reject(request, "The token has expired. Log in again.");
             } catch (JwtException | IllegalArgumentException e) {
-                request.setAttribute(TOKEN_ERROR, "The token is not valid.");
+                reject(request, "The token is not valid.");
             }
         }
         chain.doFilter(request, response);
+    }
+
+    private void reject(HttpServletRequest request, String reason) {
+        request.setAttribute(TOKEN_ERROR, reason);
+        events.tokenRejected(reason, request.getRemoteAddr(), request.getRequestURI());
     }
 }

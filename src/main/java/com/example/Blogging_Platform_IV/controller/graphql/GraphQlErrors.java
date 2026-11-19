@@ -1,6 +1,7 @@
 package com.example.Blogging_Platform_IV.controller.graphql;
 
 import com.example.Blogging_Platform_IV.exception.BlogException;
+import com.example.Blogging_Platform_IV.security.SecurityEvents;
 import graphql.GraphQLError;
 import graphql.GraphqlErrorBuilder;
 import graphql.schema.DataFetchingEnvironment;
@@ -11,6 +12,7 @@ import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.TransactionException;
 import org.springframework.graphql.data.method.annotation.GraphQlExceptionHandler;
 import org.springframework.stereotype.Controller;
@@ -19,6 +21,12 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 
 @ControllerAdvice(annotations = Controller.class)
 public class GraphQlErrors {
+    private final SecurityEvents events;
+
+    public GraphQlErrors(SecurityEvents events) {
+        this.events = events;
+    }
+
     @GraphQlExceptionHandler
     GraphQLError business(BlogException exception, DataFetchingEnvironment environment) {
         return error(environment, exception.getCode().name(), exception.getMessage());
@@ -27,6 +35,8 @@ public class GraphQlErrors {
     /** @PreAuthorize refused the call: the user's role is not allowed to run this query or mutation. */
     @GraphQlExceptionHandler
     GraphQLError forbidden(AccessDeniedException exception, DataFetchingEnvironment environment) {
+        events.accessDenied(SecurityContextHolder.getContext().getAuthentication().getName(),
+                "graphql:" + environment.getExecutionStepInfo().getPath());
         return error(environment, "FORBIDDEN", "Your role is not allowed to do this.");
     }
 
