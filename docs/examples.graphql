@@ -2,15 +2,27 @@
 #  Blogging Platform IV - GraphQL examples
 # =====================================================================
 #  1. Start the app:  .\mvnw.cmd spring-boot:run
-#  2. Open            http://localhost:8080/graphiql
-#  3. Paste ONE block, then press the play button (or Ctrl+Enter).
+#  2. Log in to get a token. In a terminal or in Postman:
+#       POST http://localhost:8080/auth/login
+#       { "username": "admin", "password": "Admin@12345" }
+#     Copy the "token" from the answer.
+#  3. Open            http://localhost:8080/graphiql
+#     Click "Headers" at the bottom and paste (with your token):
+#       { "Authorization": "Bearer <token>" }
+#     Without the header every request gets 401.
+#  4. Paste ONE block, then press the play button (or Ctrl+Enter).
+#
+#  What each role may do (a role that is not allowed gets extensions.code = FORBIDDEN):
+#    ADMIN   everything (users, dashboard, delete posts and tags)
+#    AUTHOR  read, create and update posts and tags, add comments and reviews
+#    READER  read posts and tags, add comments and reviews
 #  The IDs assume user 1, tag 1 and post 1 exist. Block 1 shows the real IDs.
 # =====================================================================
 
 
-# 1. WHAT IS IN MY DATABASE?
+# 1. WHAT IS IN MY DATABASE? (ADMIN only: users and dashboard)
 {
-  users { id username displayName }
+  users { id username displayName role }
   tags { id name }
   dashboard { users posts tags comments reviews }
 }
@@ -33,9 +45,10 @@
 }
 
 
-# 3. CREATE A USER (change the username and email before running again)
+# 3. CREATE A USER (ADMIN only. Change the username and email before running again.
+#    role is optional: ADMIN, AUTHOR or READER, and READER when it is left out)
 mutation {
-  createUser(input: { username: "graphql_author", email: "graphql_author@example.test", displayName: "GraphQL Author" }) {
+  createUser(input: { username: "graphql_author", email: "graphql_author@example.test", displayName: "GraphQL Author", password: "Author@12345", role: AUTHOR }) {
     id
     username
   }
@@ -84,5 +97,5 @@ mutation {
 
 # 9. HOW VALIDATION ERRORS LOOK
 mutation {
-  createUser(input: { username: "x", email: "not-an-email", displayName: "" }) { id }
+  createUser(input: { username: "x", email: "not-an-email", displayName: "", password: "abc" }) { id }
 }
