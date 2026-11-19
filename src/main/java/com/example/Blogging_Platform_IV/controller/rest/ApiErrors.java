@@ -12,6 +12,7 @@ import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.transaction.TransactionException;
 import org.springframework.validation.FieldError;
@@ -38,6 +39,16 @@ public class ApiErrors {
             status = HttpStatus.BAD_REQUEST;
         }
         return ResponseEntity.status(status).body(ApiResponse.error(exception.getMessage(), null));
+    }
+
+    /**
+     * @PreAuthorize refused the call: the user is logged in, but their role is not allowed here.
+     * Without this handler the catch-all below would turn it into a 500.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> forbidden(AccessDeniedException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("Your role is not allowed to do this.", null));
     }
 
     /** Wrong password or unknown username at /auth/login. The message does not say which one was wrong. */

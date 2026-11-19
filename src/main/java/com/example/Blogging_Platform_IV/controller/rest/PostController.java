@@ -1,5 +1,6 @@
 package com.example.Blogging_Platform_IV.controller.rest;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import static com.example.Blogging_Platform_IV.controller.rest.ApiResponse.ok;
 
 import com.example.Blogging_Platform_IV.dto.PostInput;
@@ -37,50 +38,57 @@ public class PostController {
         this.posts = posts;
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @GetMapping
     @Operation(summary = "List posts, paginated and sorted",
             description = "Without keyword: findAll(pageable). With keyword: the JPQL query PostRepository.searchByKeyword.")
-    ApiResponse<Page<Post>> list(@RequestParam(required = false) String keyword,
+    public ApiResponse<Page<Post>> list(@RequestParam(required = false) String keyword,
                                  @ParameterObject @PageableDefault(size = 10, sort = "createdAt",
                                          direction = Sort.Direction.DESC) Pageable pageable) {
         return ok("Posts found.", posts.list(keyword, pageable));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @GetMapping("/author/{username}")
     @Operation(summary = "Posts of one author", description = "Derived query PostRepository.findByAuthorUsername.")
-    ApiResponse<Page<Post>> byAuthor(@PathVariable String username,
+    public ApiResponse<Page<Post>> byAuthor(@PathVariable String username,
                                      @ParameterObject @PageableDefault(size = 10, sort = "createdAt",
                                              direction = Sort.Direction.DESC) Pageable pageable) {
         return ok("Posts found.", posts.byAuthor(username, pageable));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @GetMapping("/tag/{name}")
     @Operation(summary = "Posts with one tag", description = "Derived query PostRepository.findByTagsName.")
-    ApiResponse<Page<Post>> byTag(@PathVariable String name,
+    public ApiResponse<Page<Post>> byTag(@PathVariable String name,
                                   @ParameterObject @PageableDefault(size = 10, sort = "createdAt",
                                           direction = Sort.Direction.DESC) Pageable pageable) {
         return ok("Posts found.", posts.byTag(name, pageable));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @GetMapping("/{id}")
     @Operation(summary = "Read one post", description = "Cached: the second read comes from the posts cache.")
-    ApiResponse<Post> get(@PathVariable Long id) {
+    public ApiResponse<Post> get(@PathVariable Long id) {
         return ok("Post found.", posts.get(id));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<Post> create(@RequestParam Long authorId, @Valid @RequestBody PostInput input) {
+    public ApiResponse<Post> create(@RequestParam Long authorId, @Valid @RequestBody PostInput input) {
         return ok("Post created.", posts.create(authorId, input.getTitle(), input.getBody(), input.getTagIds()));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR')")
     @PutMapping("/{id}")
-    ApiResponse<Post> update(@PathVariable Long id, @Valid @RequestBody PostInput input) {
+    public ApiResponse<Post> update(@PathVariable Long id, @Valid @RequestBody PostInput input) {
         return ok("Post updated.", posts.update(id, input.getTitle(), input.getBody(), input.getTagIds()));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    ApiResponse<Void> delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable Long id) {
         posts.delete(id);
         return ok("Post deleted.", null);
     }

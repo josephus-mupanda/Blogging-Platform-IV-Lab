@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.TransactionException;
 import org.springframework.graphql.data.method.annotation.GraphQlExceptionHandler;
 import org.springframework.stereotype.Controller;
@@ -21,6 +22,12 @@ public class GraphQlErrors {
     @GraphQlExceptionHandler
     GraphQLError business(BlogException exception, DataFetchingEnvironment environment) {
         return error(environment, exception.getCode().name(), exception.getMessage());
+    }
+
+    /** @PreAuthorize refused the call: the user's role is not allowed to run this query or mutation. */
+    @GraphQlExceptionHandler
+    GraphQLError forbidden(AccessDeniedException exception, DataFetchingEnvironment environment) {
+        return error(environment, "FORBIDDEN", "Your role is not allowed to do this.");
     }
 
     // Errors that make a transaction fail: Spring has already rolled the transaction back.

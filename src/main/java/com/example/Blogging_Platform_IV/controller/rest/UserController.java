@@ -1,5 +1,6 @@
 package com.example.Blogging_Platform_IV.controller.rest;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import static com.example.Blogging_Platform_IV.controller.rest.ApiResponse.ok;
 
 import com.example.Blogging_Platform_IV.dto.UserCreate;
@@ -28,30 +29,35 @@ public class UserController {
         this.users = users;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
-    ApiResponse<List<User>> list() {
+    public ApiResponse<List<User>> list() {
         return ok("Users found.", users.list());
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @GetMapping("/{id}")
-    ApiResponse<User> get(@PathVariable Long id) {
+    public ApiResponse<User> get(@PathVariable Long id) {
         return ok("User found.", users.get(id));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<User> create(@Valid @RequestBody UserCreate input) {
+    public ApiResponse<User> create(@Valid @RequestBody UserCreate input) {
         return ok("User created.", users.create(input.getUsername(), input.getEmail(), input.getDisplayName(),
                 input.getPassword(), input.getRole()));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    ApiResponse<User> update(@PathVariable Long id, @Valid @RequestBody UserUpdate input) {
+    public ApiResponse<User> update(@PathVariable Long id, @Valid @RequestBody UserUpdate input) {
         return ok("User updated.", users.update(id, input.getEmail(), input.getDisplayName()));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    ApiResponse<Void> delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable Long id) {
         users.delete(id);
         return ok("User deleted.", null);
     }

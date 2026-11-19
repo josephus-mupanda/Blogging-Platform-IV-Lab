@@ -1,5 +1,6 @@
 package com.example.Blogging_Platform_IV.controller.graphql;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.example.Blogging_Platform_IV.dto.TagInput;
 import com.example.Blogging_Platform_IV.entity.Tag;
 import com.example.Blogging_Platform_IV.service.TagService;
@@ -18,26 +19,31 @@ public class TagGraphQlController {
         this.tags = tags;
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @QueryMapping
     public List<Tag> tags() {
         return tags.list();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @QueryMapping
     public Tag tag(@Argument Long id) {
         return tags.get(id);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR')")
     @MutationMapping
     public Tag createTag(@Argument @Valid TagInput input) {
         return tags.create(input.getName());
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR')")
     @MutationMapping
     public Tag updateTag(@Argument Long id, @Argument @Valid TagInput input) {
         return tags.update(id, input.getName());
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @MutationMapping
     public boolean deleteTag(@Argument Long id) {
         tags.delete(id);

@@ -1,5 +1,6 @@
 package com.example.Blogging_Platform_IV.controller.rest;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import static com.example.Blogging_Platform_IV.controller.rest.ApiResponse.ok;
 
 import com.example.Blogging_Platform_IV.dto.TagInput;
@@ -27,29 +28,34 @@ public class TagController {
         this.tags = tags;
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @GetMapping
-    ApiResponse<List<Tag>> list() {
+    public ApiResponse<List<Tag>> list() {
         return ok("Tags found.", tags.list());
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
     @GetMapping("/{id}")
-    ApiResponse<Tag> get(@PathVariable Long id) {
+    public ApiResponse<Tag> get(@PathVariable Long id) {
         return ok("Tag found.", tags.get(id));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<Tag> create(@Valid @RequestBody TagInput input) {
+    public ApiResponse<Tag> create(@Valid @RequestBody TagInput input) {
         return ok("Tag created.", tags.create(input.getName()));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR')")
     @PutMapping("/{id}")
-    ApiResponse<Tag> update(@PathVariable Long id, @Valid @RequestBody TagInput input) {
+    public ApiResponse<Tag> update(@PathVariable Long id, @Valid @RequestBody TagInput input) {
         return ok("Tag updated.", tags.update(id, input.getName()));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    ApiResponse<Void> delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable Long id) {
         tags.delete(id);
         return ok("Tag deleted.", null);
     }
