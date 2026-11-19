@@ -2,6 +2,7 @@ package com.example.Blogging_Platform_IV.service;
 
 import com.example.Blogging_Platform_IV.entity.Comment;
 import com.example.Blogging_Platform_IV.entity.Review;
+import com.example.Blogging_Platform_IV.entity.Role;
 import com.example.Blogging_Platform_IV.entity.User;
 import com.example.Blogging_Platform_IV.exception.BlogException;
 import com.example.Blogging_Platform_IV.repository.CommentRepository;
@@ -14,6 +15,7 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,13 +29,15 @@ public class UserService {
     private final PostRepository posts;
     private final CommentRepository comments;
     private final ReviewRepository reviews;
+    private final PasswordEncoder passwordEncoder;
 
     public UserService(UserRepository users, PostRepository posts, CommentRepository comments,
-                       ReviewRepository reviews) {
+                       ReviewRepository reviews, PasswordEncoder passwordEncoder) {
         this.users = users;
         this.posts = posts;
         this.comments = comments;
         this.reviews = reviews;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public List<User> list() {
@@ -46,9 +50,11 @@ public class UserService {
         return users.findById(id).orElseThrow(() -> BlogException.notFound("User"));
     }
 
+    /** The password is hashed with BCrypt here, so only the hash reaches the database. No role means READER. */
     @Transactional(rollbackFor = Exception.class)
-    public User create(String username, String email, String displayName) {
-        return users.save(new User(username, email, displayName));
+    public User create(String username, String email, String displayName, String password, Role role) {
+        return users.save(new User(username, email, displayName, passwordEncoder.encode(password),
+                role == null ? Role.READER : role));
     }
 
     /**

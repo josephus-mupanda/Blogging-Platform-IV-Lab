@@ -2,8 +2,9 @@
 -- 1. Start the application once on the benchmark database, so Hibernate creates the tables.
 -- 2. Run: psql -h localhost -p 5433 -U postgres -d blogging_platform_iv_bench -f db/benchmark-data.sql
 
-INSERT INTO users (username, email, display_name)
-VALUES ('bench-author', 'bench-author@example.test', 'Benchmark author')
+INSERT INTO users (username, email, display_name, password, role)
+-- The password is not a real BCrypt hash, so this user cannot log in. It is only benchmark data.
+VALUES ('bench-author', 'bench-author@example.test', 'Benchmark author', 'not-a-login', 'AUTHOR')
 ON CONFLICT (username) DO NOTHING;
 
 INSERT INTO posts (author_id, title, body, created_at, updated_at, version)
