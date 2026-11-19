@@ -1,6 +1,6 @@
 # Performance report
 
-This report measures the three optimizations of Blogging Platform III:
+This report measures the three optimizations of Blogging Platform IV:
 
 1. **Indexes** declared on the entities.
 2. **`@BatchSize`**, which removes the "N+1 queries" problem when a page of posts loads its tags.
@@ -13,12 +13,12 @@ The benchmark database holds **20,000 posts**, each with **2 of 10 tags**. Measu
 ## Setup
 
 ```powershell
-createdb -h localhost -p 5433 -U postgres blogging_platform_iii_bench
-$env:DB_POSTGRES_URL = 'jdbc:postgresql://localhost:5433/blogging_platform_iii_bench'
-$env:DB_MONGO_URI = 'mongodb://localhost:27017/blogging_platform_iii_bench'
+createdb -h localhost -p 5433 -U postgres blogging_platform_iv_bench
+$env:DB_POSTGRES_URL = 'jdbc:postgresql://localhost:5433/blogging_platform_iv_bench'
+$env:DB_MONGO_URI = 'mongodb://localhost:27017/blogging_platform_iv_bench'
 .\mvnw.cmd spring-boot:run          # Hibernate creates the tables
-psql -h localhost -p 5433 -U postgres -d blogging_platform_iii_bench -f db/benchmark-data.sql
-psql -h localhost -p 5433 -U postgres -d blogging_platform_iii_bench -f db/benchmark.sql
+psql -h localhost -p 5433 -U postgres -d blogging_platform_iv_bench -f db/benchmark-data.sql
+psql -h localhost -p 5433 -U postgres -d blogging_platform_iv_bench -f db/benchmark.sql
 ```
 
 - [db/benchmark-data.sql](../db/benchmark-data.sql) inserts the posts and tags.

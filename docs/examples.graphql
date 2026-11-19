@@ -1,5 +1,5 @@
 # =====================================================================
-#  Blogging Platform III - GraphQL examples
+#  Blogging Platform IV - GraphQL examples
 # =====================================================================
 #  1. Start the app:  .\mvnw.cmd spring-boot:run
 #  2. Open            http://localhost:8080/graphiql

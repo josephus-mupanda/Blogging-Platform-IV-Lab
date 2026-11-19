@@ -1,4 +1,4 @@
-# Blogging Platform III
+# Blogging Platform IV
 
 A Java 21 and Spring Boot 3.5 backend for a blogging platform. It continues Blogging Platform II (same REST and GraphQL APIs, same layers, same profiles) and moves the data access to **Spring Data JPA**, with pagination, sorting, transactions and caching.
 
@@ -17,7 +17,7 @@ A Java 21 and Spring Boot 3.5 backend for a blogging platform. It continues Blog
 | Native SQL query | `TagRepository.removeTagFromPosts` |
 | Pagination and sorting with `Pageable` | `GET /api/posts`, `GET /api/posts/{postId}/comments` |
 | `@Transactional`, propagation, isolation, rollback | `service/PostService` (`create`, `update`), `entity/Post` (`@Version`) |
-| Caching with `@EnableCaching`, `@Cacheable`, `@CachePut`, `@CacheEvict` | `BloggingPlatformIiiApplication`, `PostService`, `UserService`, `TagService` |
+| Caching with `@EnableCaching`, `@Cacheable`, `@CachePut`, `@CacheEvict` | `BloggingPlatformIVApplication`, `PostService`, `UserService`, `TagService` |
 | Performance measured | [docs/performance-report.md](docs/performance-report.md) |
 
 ## Code structure
@@ -124,7 +124,7 @@ If the PostgreSQL part fails, the transaction is rolled back and MongoDB is neve
 
 ## Caching
 
-`@EnableCaching` on `BloggingPlatformIiiApplication` turns caching on. `spring.cache.type=simple` keeps the values in memory.
+`@EnableCaching` on `BloggingPlatformIVApplication` turns caching on. `spring.cache.type=simple` keeps the values in memory.
 
 | Cache | Filled by `@Cacheable` | Replaced by `@CachePut` | Emptied by `@CacheEvict` |
 |---|---|---|---|
@@ -140,7 +140,7 @@ If the PostgreSQL part fails, the transaction is rolled back and MongoDB is neve
 
 | Change | What is refreshed |
 |---|---|
-| Update a user | `users` entry replaced (`@CachePut`), whole `posts` cache cleared (`@CacheEvict`), and the name copied into the user's comments and reviews (MongoDB) updated. All three in [UserService.update](src/main/java/com/example/Blogging_Platform_III/service/UserService.java). |
+| Update a user | `users` entry replaced (`@CachePut`), whole `posts` cache cleared (`@CacheEvict`), and the name copied into the user's comments and reviews (MongoDB) updated. All three in [UserService.update](src/main/java/com/example/Blogging_Platform_IV/service/UserService.java). |
 | Rename or delete a tag | `tags` and `posts` caches cleared |
 | Update a post | `posts` entry replaced |
 | Delete a post | `posts` entry removed, plus its comments and reviews |
@@ -154,14 +154,14 @@ Install JDK 21, PostgreSQL and MongoDB. Create an empty database once, then star
 
 ```powershell
 $env:Path += ";C:\Program Files\PostgreSQL\18\bin"
-createdb -h localhost -p 5433 -U postgres blogging_platform_iii
+createdb -h localhost -p 5433 -U postgres blogging_platform_iv
 .\mvnw.cmd spring-boot:run
 ```
 
 | Profile | PostgreSQL | MongoDB | GraphiQL |
 |---|---|---|---|
-| `dev` (default) | `localhost:5433/blogging_platform_iii` | `localhost:27017/blogging_platform_iii` | on |
-| `test` | `localhost:5433/blogging_platform_iii_test` | `localhost:27017/blogging_platform_iii_test` | on |
+| `dev` (default) | `localhost:5433/blogging_platform_iv` | `localhost:27017/blogging_platform_iv` | on |
+| `test` | `localhost:5433/blogging_platform_iv_test` | `localhost:27017/blogging_platform_iv_test` | on |
 | `prod` | from `DB_POSTGRES_URL`, `DB_POSTGRES_USER`, `DB_POSTGRES_PASSWORD`, `DB_MONGO_URI` | | off |
 
 ## Testing the API
