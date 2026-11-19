@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Blogging Platform III",
-    "description": "REST and GraphQL requests for the Blogging Platform III lab. Start the app with .\\mvnw.cmd spring-boot:run, import this file, and run the folders from top to bottom. The create requests save their IDs into collection variables for the later requests.",
+    "name": "Blogging Platform IV",
+    "description": "REST and GraphQL requests for the Blogging Platform IV lab. Start the app with .\\mvnw.cmd spring-boot:run, import this file, and run the folders from top to bottom. The create requests save their IDs into collection variables for the later requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [

@@ -1,6 +1,6 @@
--- Blogging Platform III - benchmark data (20,000 posts, 10 tags, 2 tags per post).
+-- Blogging Platform IV - benchmark data (20,000 posts, 10 tags, 2 tags per post).
 -- 1. Start the application once on the benchmark database, so Hibernate creates the tables.
--- 2. Run: psql -h localhost -p 5433 -U postgres -d blogging_platform_iii_bench -f db/benchmark-data.sql
+-- 2. Run: psql -h localhost -p 5433 -U postgres -d blogging_platform_iv_bench -f db/benchmark-data.sql
 
 INSERT INTO users (username, email, display_name)
 VALUES ('bench-author', 'bench-author@example.test', 'Benchmark author')

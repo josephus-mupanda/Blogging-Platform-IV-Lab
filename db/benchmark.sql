@@ -1,6 +1,6 @@
--- Blogging Platform III - query plans for the performance report.
+-- Blogging Platform IV - query plans for the performance report.
 -- Run after db/benchmark-data.sql:
---   psql -h localhost -p 5433 -U postgres -d blogging_platform_iii_bench -f db/benchmark.sql
+--   psql -h localhost -p 5433 -U postgres -d blogging_platform_iv_bench -f db/benchmark.sql
 -- Nothing is changed: the "without index" tests drop the index inside a transaction and
 -- ROLLBACK puts it back.
 
