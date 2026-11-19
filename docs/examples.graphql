@@ -18,10 +18,11 @@
 
 # 2. ONE PAGE OF POSTS (newest first). Add keyword: "spring" to search.
 {
-  posts(page: 0, size: 5) {
+  posts(page: 0, size: 500) {
     totalElements
     totalPages
     number
+    size
     content {
       id
       title
