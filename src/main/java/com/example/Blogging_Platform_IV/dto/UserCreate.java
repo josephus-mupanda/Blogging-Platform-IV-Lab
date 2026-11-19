@@ -1,5 +1,6 @@
 package com.example.Blogging_Platform_IV.dto;
 
+import com.example.Blogging_Platform_IV.entity.Role;
 import com.example.Blogging_Platform_IV.validation.UniqueAccount;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -21,6 +22,30 @@ public class UserCreate {
     @NotBlank
     @Size(max = 100)
     private String displayName;
+
+    /** BCrypt only reads the first 72 bytes of a password, so longer ones are refused. */
+    @NotBlank
+    @Size(min = 8, max = 72)
+    private String password;
+
+    /** Optional. READER when it is missing. */
+    private Role role;
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
+    }
 
     public String getUsername() {
         return username;

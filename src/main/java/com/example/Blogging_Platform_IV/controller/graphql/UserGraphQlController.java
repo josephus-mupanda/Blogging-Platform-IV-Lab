@@ -31,7 +31,8 @@ public class UserGraphQlController {
 
     @MutationMapping
     public User createUser(@Argument @Valid UserCreate input) {
-        return users.create(input.getUsername(), input.getEmail(), input.getDisplayName());
+        return users.create(input.getUsername(), input.getEmail(), input.getDisplayName(),
+                input.getPassword(), input.getRole());
     }
 
     @MutationMapping

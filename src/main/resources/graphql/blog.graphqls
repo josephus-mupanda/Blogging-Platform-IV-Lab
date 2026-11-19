@@ -28,14 +28,16 @@ type Mutation {
   addReview(postId: ID!, reviewerId: ID!, input: ReviewInput!): Review
 }
 
-input UserCreate { username: String!, email: String!, displayName: String! }
+input UserCreate { username: String!, email: String!, displayName: String!, password: String!, role: Role }
 input UserUpdate { email: String!, displayName: String! }
 input PostInput { title: String!, body: String!, tagIds: [ID!] }
 input TagInput { name: String! }
 input CommentInput { body: String! }
 input ReviewInput { rating: Int!, text: String }
 
-type User { id: ID!, username: String!, displayName: String! }
+enum Role { ADMIN, AUTHOR, READER }
+
+type User { id: ID!, username: String!, displayName: String!, role: Role! }
 type Tag { id: ID!, name: String! }
 type Post { id: ID!, title: String!, body: String!, author: User!, tags: [Tag!]!, createdAt: String, updatedAt: String }
 type Comment { id: ID!, postId: ID!, authorId: ID!, authorName: String!, body: String!, createdAt: String! }

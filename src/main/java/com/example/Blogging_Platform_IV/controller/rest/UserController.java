@@ -41,7 +41,8 @@ public class UserController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     ApiResponse<User> create(@Valid @RequestBody UserCreate input) {
-        return ok("User created.", users.create(input.getUsername(), input.getEmail(), input.getDisplayName()));
+        return ok("User created.", users.create(input.getUsername(), input.getEmail(), input.getDisplayName(),
+                input.getPassword(), input.getRole()));
     }
 
     @PutMapping("/{id}")
