@@ -38,3 +38,6 @@ build/
 
 # Files written by the VS Code Java upgrade extension
 /.github/modernize/
+
+# Log files
+logs/
