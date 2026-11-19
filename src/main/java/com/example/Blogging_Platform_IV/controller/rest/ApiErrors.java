@@ -12,6 +12,7 @@ import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.transaction.TransactionException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
@@ -37,6 +38,13 @@ public class ApiErrors {
             status = HttpStatus.BAD_REQUEST;
         }
         return ResponseEntity.status(status).body(ApiResponse.error(exception.getMessage(), null));
+    }
+
+    /** Wrong password or unknown username at /auth/login. The message does not say which one was wrong. */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>> badCredentials(AuthenticationException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error("Invalid username or password.", null));
     }
 
     // ----- Errors that make a transaction fail. In every case Spring has already rolled the -----
