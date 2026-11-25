@@ -1,256 +1,254 @@
-# Review notes: Blogging Platform III
+# Review notes: Blogging Platform IV
 
-A revision guide for the lab review. For every requirement it says **what it means**, **where it is in the code**, and **how to show it**.
+A revision guide for the lab review. For every requirement it says **what it means**, **where it is in the code** and **how to show it**. Read sections 2, 4 and 6 twice.
 
-Code links point to `src/main/java/com/example/Blogging_Platform_III/`.
+Paths are inside `src/main/java/com/example/Blogging_Platform_IV/`.
 
 ---
 
 ## 1. Before the review (5 minutes)
 
-1. Check that PostgreSQL (port 5433) and MongoDB (port 27017) are running.
-2. If the database does not exist yet, create it once:
+1. PostgreSQL (port 5433) and MongoDB (port 27017) must be running.
+2. Create the database once (new name, the users table changed):
    ```powershell
    $env:Path += ";C:\Program Files\PostgreSQL\18\bin"
-   createdb -h localhost -p 5433 -U postgres blogging_platform_iii
+   createdb -h localhost -p 5433 -U postgres blogging_platform_iv
    ```
-3. Start the app: `.\mvnw.cmd spring-boot:run`. Hibernate creates the tables at startup.
-4. Open these in your browser and in Postman:
-   - Swagger: http://localhost:8080/swagger-ui/index.html
-   - GraphiQL: http://localhost:8080/graphiql
-   - Postman: import `docs/postman_collection.json`, then run folders 1, 2 and 3 once so there is data.
-5. Keep the terminal visible. In the `dev` profile, the AOP aspect prints the time of every service call there, which you need to show the cache.
+3. Set the Google values, then start the app (Hibernate creates the tables, the admin is created):
+   ```powershell
+   $env:GOOGLE_CLIENT_ID = "<client id>"
+   $env:GOOGLE_CLIENT_SECRET = "<client secret>"
+   .\mvnw.cmd spring-boot:run
+   ```
+4. Open: Swagger <http://localhost:8080/swagger-ui/index.html>, Postman (import `docs/postman_collection.json`), and keep `logs/application.log` open.
+5. Run the **whole Postman collection once** before the review (Collection Runner). Everything should be green. Do not run it again during the review if you want a clean security report.
+6. Admin login: `admin` / `Admin@12345`.
 
 ---
 
 ## 2. The project in one minute (what to say first)
 
-> "Platform III continues Platform II: same REST and GraphQL APIs, same layers (Controller → Service → Repository), same profiles. In this phase I replaced the hand-written JDBC code with **Spring Data JPA**. My entities are mapped with `@Entity`, and **Hibernate creates the tables and relationships** from them. The repositories extend `JpaRepository`, and I use **derived, JPQL and native queries**. Lists are **paginated and sorted with `Pageable`**. Writes are **`@Transactional`**, with propagation, isolation and rollback. Posts, users and tags are **cached with Spring Cache**. I measured the effect of the indexes, `@BatchSize` and the cache in the performance report. Comments and reviews stay in MongoDB, as designed in Platform I."
+> "Platform IV adds security to Platform III. A user can **register and log in with a username and password**, or **log in with Google**, and gets a **JWT**. The token is sent in the `Authorization` header and checked by **my own filter** on every request. There are three roles, **ADMIN, AUTHOR and READER**, and each endpoint is protected with **`@PreAuthorize`**. Passwords are hashed with **BCrypt**. I configured **CORS** for the browser origins and I **disabled CSRF for the API** because it is stateless, and I show how **CSRF works on a form**. For data structures, I use a **hash map as a blacklist** for logged-out tokens (the key is the **SHA-256** hash of the token) and hash maps to **count security events and detect brute force**. Everything is **logged**, and an admin can read a **security report**. I tested all of it with a **Postman collection**."
 
 ---
 
 ## 3. Requirement checklist
 
-✅ = done and easy to show. ⚠️ = done, but know the weak point (see section 7).
-
-### Epic 1: Spring Data integration
+### Epic 1: Security configuration and access policies
 
 | Requirement | Where | How to show |
 |---|---|---|
-| ✅ Spring Data JPA dependency added and configured | [pom.xml](pom.xml) (`spring-boot-starter-data-jpa`), [application.properties](src/main/resources/application.properties#L10) (`ddl-auto=update`) | Open both files. |
-| ✅ Entities with `@Entity`, `@Id`, relationships | [Post.java](src/main/java/com/example/Blogging_Platform_III/entity/Post.java#L31): `@ManyToOne author` (line 53), `@ManyToMany tags` (line 63). [User.java](src/main/java/com/example/Blogging_Platform_III/entity/User.java#L15), [Tag.java](src/main/java/com/example/Blogging_Platform_III/entity/Tag.java#L14) | Open `Post.java`. In pgAdmin or psql, `\d posts` shows the foreign key `author_id`, and `\d post_tags` shows the join table. |
-| ✅ Repositories extend `JpaRepository` or `CrudRepository` | [repository/](src/main/java/com/example/Blogging_Platform_III/repository) | `UserRepository`, `PostRepository`, `TagRepository` extend `JpaRepository`. `CommentRepository` and `ReviewRepository` extend `MongoRepository`, which extends `CrudRepository`. |
-| ✅ Connects to the existing database | `application-dev.properties` | The app starts. `ddl-auto=update` keeps existing data and only adds what is missing. |
+| ✅ `SecurityFilterChain` with custom rules | `config/SecurityConfig` (3 chains) | Open the file. The `api` chain: public `/auth/login` and `/auth/register`, everything else `authenticated()`. |
+| ✅ Public and restricted endpoints (admin, author, reader) | `SecurityConfig` + `@PreAuthorize` in `controller/` | Postman folder 7 "Role checks". |
+| ✅ BCrypt for passwords | `SecurityConfig.passwordEncoder`, `service/UserService.create` | `select username, password from users;` in psql: the hash starts with `$2a$10$`. |
+| ✅ Global CORS: origins, methods, headers | `config/CorsConfig` | Postman folder 9: allowed origin gives 200, `http://evil.example` gives 403 "Invalid CORS request". |
+| ✅ Unauthorized origins blocked | same | same |
 
-### Epic 2: Repositories and queries
-
-| Requirement | Where | How to show |
-|---|---|---|
-| ✅ Repositories for User, Post, Comment, Tag, Review | the 5 files in `repository/` | Open the folder. |
-| ✅ Derived queries (`findByAuthorName`, `findByTagName`) | [PostRepository.java:19](src/main/java/com/example/Blogging_Platform_III/repository/PostRepository.java#L19) `findByAuthorUsername`, [line 22](src/main/java/com/example/Blogging_Platform_III/repository/PostRepository.java#L22) `findByTagsName` | Postman: "Posts of one author" and "Posts with one tag". |
-| ✅ `@Query` with JPQL | [PostRepository.java:29](src/main/java/com/example/Blogging_Platform_III/repository/PostRepository.java#L29) `searchByKeyword` | Postman: "Search posts by keyword (JPQL)". |
-| ✅ `@Query` with native SQL | [TagRepository.java:16-17](src/main/java/com/example/Blogging_Platform_III/repository/TagRepository.java#L16) `removeTagFromPosts` | Postman: delete a tag that is used by a post, then read the post: the tag is gone from it. |
-| ✅ Pagination and sorting with `Pageable` | [PostController.java](src/main/java/com/example/Blogging_Platform_III/controller/rest/PostController.java#L44) (`@PageableDefault`), [DiscussionController.java](src/main/java/com/example/Blogging_Platform_III/controller/rest/DiscussionController.java#L42) | Postman: "List posts - page, size, sort". Change `page`, `size`, `sort=title,asc`. Show the `page` block in the response. |
-| ✅ Paginated responses for posts **and** comments | `GET /api/posts`, `GET /api/posts/{id}/comments` | Postman: "List comments - one page". |
-| ✅ Sorting and pagination performance tested and documented | [docs/performance-report.md](docs/performance-report.md), section 4 | Show the table: page 0 compared with page 1000. |
-
-### Epic 3: Transactions and optimization
+### Epic 2: JWT authentication
 
 | Requirement | Where | How to show |
 |---|---|---|
-| ✅ `@Transactional` on create/update/delete | `UserService`, `TagService`, `PostService`, `DiscussionService` | Open `PostService`. |
-| ✅ Propagation | [PostService.java:68](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L68) `propagation = Propagation.REQUIRED` | Explain (section 4.5). |
-| ✅ Isolation | [PostService.java:83](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L83) `isolation = Isolation.READ_COMMITTED` | Explain (section 4.5). |
-| ✅ No data loss during concurrent updates | [Post.java:83](src/main/java/com/example/Blogging_Platform_III/entity/Post.java#L83) `@Version` → 409 in [ApiErrors.java:49](src/main/java/com/example/Blogging_Platform_III/controller/rest/ApiErrors.java#L49) | Explain. In psql, `SELECT id, version FROM posts;` shows that the version goes up after each update. |
-| ✅ Rollback verified in an error scenario | [PostService.java:71-72](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L71) | **Rollback demo** (section 5, step 4). |
-| ✅ Rollback for any exception, and a clear answer when a transaction fails | `rollbackFor = Exception.class` on every write method. Handlers in [ApiErrors.java:49-83](src/main/java/com/example/Blogging_Platform_III/controller/rest/ApiErrors.java#L49) | Postman: "Same title again" gives 409 "The transaction was rolled back, nothing was saved." The console shows "Rolling back JPA transaction". |
-| ✅ PostgreSQL and MongoDB stay consistent | `flush()` before the MongoDB writes: [PostService.java:104](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L104), [UserService.java:96](src/main/java/com/example/Blogging_Platform_III/service/UserService.java#L96) | Delete a post: its comments and reviews are deleted too. |
-| ⚠️ Complex JPQL optimized | `searchByKeyword` and `@BatchSize` | See section 7. |
-| ✅ Indexes validated for frequent queries | [Post.java:34-36, 68](src/main/java/com/example/Blogging_Platform_III/entity/Post.java#L34) (`@Index`) | `\d posts` in psql. Performance report, section 1. |
-| ✅ Query times before and after optimization | [docs/performance-report.md](docs/performance-report.md), sections 1 and 2 | Index: 17–32 ms → 0.1 ms. `@BatchSize`: 13 or 53 SQL statements → 4. |
+| ✅ `/auth/login` returns a signed JWT with username, roles, expiry | `controller/rest/AuthController`, `service/AuthService.login`, `service/JwtService.generate` | Postman "Login as ADMIN". Paste the token on jwt.io: `sub`, `roles`, `iat`, `exp`. |
+| ✅ Token validated on every protected request | `filter/JwtAuthenticationFilter`, `JwtService.parse` | Call `GET /api/posts` with and without the token. |
+| ✅ Expired or tampered token gives 401 | `JwtAuthenticationFilter` (catches `ExpiredJwtException` and `JwtException`), `handler/JsonSecurityHandlers` | Postman folder 8: tampered and expired token. |
+| ✅ HMAC SHA-256, can be decoded in Postman | `JwtService` (`Jwts.SIG.HS256`) | The login test in Postman decodes the header (`alg: HS256`) and the claims. |
 
-### Epic 4: Caching
+### Epic 3: CSRF and sessions
 
 | Requirement | Where | How to show |
 |---|---|---|
-| ✅ Cache for popular posts, users and tags | [PostService.java:57](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L57), [UserService.java:44](src/main/java/com/example/Blogging_Platform_III/service/UserService.java#L44), [TagService.java:22](src/main/java/com/example/Blogging_Platform_III/service/TagService.java#L22) (`@Cacheable`) | Send "Get post (cached)" twice and look at the terminal times (section 5, step 6). |
-| ✅ `@EnableCaching` | [BloggingPlatformIiiApplication.java:9](src/main/java/com/example/Blogging_Platform_III/BloggingPlatformIiiApplication.java#L9) | Open the file. |
-| ✅ Invalidation after create/update | `@CachePut` on update: [PostService.java:84](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L84), [UserService.java:64](src/main/java/com/example/Blogging_Platform_III/service/UserService.java#L64). `@CacheEvict` on create and delete: [TagService.java:33](src/main/java/com/example/Blogging_Platform_III/service/TagService.java#L33), [PostService.java:100](src/main/java/com/example/Blogging_Platform_III/service/PostService.java#L100) | Update a post, then read it: you see the new title, with no SQL. |
-| ✅ No stale data: a cached post never shows an old author name | [UserService.java:64-65](src/main/java/com/example/Blogging_Platform_III/service/UserService.java#L64): `@Caching(put = users, evict = posts)`, plus the name copied into comments and reviews | Section 5, step 7. |
-| ✅ Performance improvement measured | [docs/performance-report.md](docs/performance-report.md), section 3 | Reading a post: 4.7 ms → 0.6 ms in the service. |
+| ✅ CSRF disabled for the stateless API, with an explanation | `SecurityConfig.api` (`csrf(disable)`), comment above it, README section 6 | Postman: "JWT API: POST needs no CSRF token" gives 201. |
+| ✅ CSRF explained for sessions and forms, with a demo | `SecurityConfig.csrfDemo`, `controller/rest/CsrfDemoController` | Browser: <http://localhost:8080/csrf-demo/form>. First form works, second form (no token) gives 403. |
+| ✅ CORS vs CSRF documented in the README | README section 6 | Show the comparison table. |
+| ✅ Tested with Postman and a browser | Postman folder 9, the form in the browser | |
 
-### Epic 5: Documentation
+### Epic 4: OAuth2 and RBAC
 
-| Requirement | Where |
+| Requirement | Where | How to show |
+|---|---|---|
+| ✅ Google login with Spring Security OAuth2 Client | `SecurityConfig.googleLogin`, `application.properties` (`spring.security.oauth2.client.registration.google`) | Browser: <http://localhost:8080/oauth2/authorization/google>. |
+| ✅ User from Google saved in the database | `handler/OAuth2LoginSuccessHandler`, `UserService.findOrCreateGoogleUser` | After the login: `select username, email, role from users;` shows the new user. |
+| ✅ Role assigned automatically | `findOrCreateGoogleUser` creates it with `Role.READER` | The JSON answer says `"role": "READER"`. |
+| ✅ Roles ADMIN, AUTHOR, READER | `enums/Role`, column `users.role` | |
+| ✅ `@PreAuthorize` on endpoints | all REST and GraphQL controllers | Open `PostController`: `@PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR')")` on create and update. |
+| ✅ Verified with Postman | folder 7 | 12 requests: 200, 201, 403 and the GraphQL `FORBIDDEN` error. |
+
+### Epic 5: DSA and security optimisation
+
+| Requirement | Where | How to show |
+|---|---|---|
+| ✅ Hashing for passwords and token verification | BCrypt (passwords), HMAC SHA-256 (signature), SHA-256 (blacklist key) | Explain the three uses (section 4.7). |
+| ✅ Map for temporary token blacklisting | `service/TokenBlacklist` (`ConcurrentHashMap`) | Postman folder 8: logout, then the same token gives 401 "revoked". |
+| ✅ In-memory hash map for revoked tokens and sessions | same + `SecurityEvents` | `GET /api/security/report` shows `revokedTokensTracked`. |
+| ✅ Logging of success and failure events | `service/SecurityEvents`, `logs/application.log` | Show `LOGIN_SUCCESS`, `LOGIN_FAILURE`. |
+| ✅ Reports with token usage and access frequency | `GET /api/security/report` (`requestsPerUser`, `events`) | Call it as admin. |
+| ✅ Logs analysed to detect brute force | `SecurityEvents.recordFailure`, `BRUTE_FORCE_SUSPECTED` | Postman: 6 wrong passwords, then the report lists `suspiciousSources`. |
+
+### Technical requirements and deliverables
+
+| Item | Status |
 |---|---|
-| ✅ Repository structure and query logic documented | [README.md](README.md), "Repositories and queries", plus comments in each repository |
-| ✅ Transaction strategies described | README, "Transactions" |
-| ✅ README with caching configuration and testing steps | README, "Caching" and "Testing the API" |
-
-### Deliverables
-
-| Deliverable | Where |
-|---|---|
-| ✅ Spring Data integration | `entity/`, `repository/` |
-| ✅ Custom queries (JPQL and native) | `PostRepository.searchByKeyword`, `TagRepository.removeTagFromPosts` |
-| ✅ Transaction management, tested for rollback | `PostService` + the Postman "Rollback demo" (manual test; there are no automated tests) |
-| ✅ Caching with a clear strategy and eviction | `@Cacheable`, `@CachePut`, `@CacheEvict`, and the README table |
-| ✅ Performance report (before and after) | `docs/performance-report.md` |
-| ✅ OpenAPI extended with the repository-driven endpoints | Swagger: `/api/posts`, `/api/posts/author/{username}`, `/api/posts/tag/{name}`, `/api/posts/{postId}/comments` have descriptions naming the query they run |
-| ✅ README | `README.md` |
-
-### Still there from Platform II
-
-| Feature | Where |
-|---|---|
-| Profiles `dev`, `test`, `prod` | `application-*.properties` |
-| Bean Validation and a custom validator | `dto/` (`@NotBlank`, `@Email`...), [UserCreate.java:9](src/main/java/com/example/Blogging_Platform_III/dto/UserCreate.java#L9) `@UniqueAccount` |
-| Central error handling | `controller/rest/ApiErrors.java` (`@RestControllerAdvice`) |
-| GraphQL | `controller/graphql/`, `resources/graphql/blog.graphqls` |
-| AOP logging and timing | [ServiceMonitoring.java](src/main/java/com/example/Blogging_Platform_III/config/ServiceMonitoring.java#L15) (`@Before`, `@After`, `@Around`) |
+| Spring Boot 3.x with Security, JWT, OAuth2 Client, Validation, Cache | ✅ `pom.xml` (Cache and Validation from before) |
+| Java 21 | ✅ |
+| Username/password with JWT and Google | ✅ |
+| `User` and `Role` | ⚠️ `User` is an entity. `Role` is an **enum** saved as text in `users.role` (section 7). |
+| OpenAPI with secured and public endpoints | ✅ `config/OpenApiConfig`, padlocks in Swagger, none on login and register |
+| GraphQL / Postman / frontend testing | ✅ Postman collection (93 checks), GraphiQL with the `Authorization` header |
+| README and docs | ✅ README with two pictures, `docs/` |
 
 ---
 
 ## 4. The concepts in simple words
 
-### 4.1 Spring Data JPA and Hibernate
+### 4.1 Authentication and authorization
+- **Authentication** = who are you? (login, token). A failure is **401**.
+- **Authorization** = what may you do? (the role). A failure is **403**.
 
-- **JPA** is the Java standard for saving objects in a relational database.
-- **Hibernate** is the library that does the work (it turns objects into SQL).
-- **Spring Data JPA** writes the repository code for us.
-- `ddl-auto=update`: at startup, Hibernate reads the entities and creates the tables, columns, foreign keys and indexes that are missing. It never deletes data.
+### 4.2 BCrypt
+A password is never saved. `BCryptPasswordEncoder` makes a hash with a random **salt**, so the same password gives a different hash each time, and it is slow on purpose, so guessing is hard. At login Spring hashes the typed password and compares it with the stored hash. A hash cannot be turned back into the password.
 
-### 4.2 Entities and relationships
+### 4.3 JWT
+`header.payload.signature`, three Base64 parts separated by dots.
+- Payload (claims): `sub` = username, `roles`, `iat` = issued at, `exp` = expiry (60 minutes), `jti` = unique id.
+- Signature: HMAC SHA-256 of `header.payload` with a **secret key** only the server has.
+- Anyone can **read** the payload, but if someone **changes** it (for example the role), the signature no longer matches and the token is refused. So the server trusts the token **without** asking the database.
+- **Stateless**: the server stores no session. The client sends the token with every request.
 
-- `@Entity` means "this class is a table". `@Id` + `@GeneratedValue` means "this is the primary key, and the database generates it".
-- `@ManyToOne User author`: many posts belong to one user. Hibernate adds the column `author_id` with a foreign key to `users`.
-- `@ManyToMany Set<Tag> tags`: a post has many tags, and a tag is on many posts. Hibernate creates the join table `post_tags (post_id, tag_id)`.
-- `@CreationTimestamp` / `@UpdateTimestamp`: Hibernate fills the dates for us.
-- `@JsonIgnore` on `email`: the email is never sent back in a response.
-- Lombok's `@Getter`, `@Setter` and `@NoArgsConstructor` write the getters, setters and the empty constructor that JPA needs.
+### 4.4 The request flow (show the picture in the README)
+1. **CORS** check (browsers only).
+2. Spring chooses the **filter chain** by URL (three chains).
+3. **`JwtAuthenticationFilter`** (mine) reads the `Bearer` token, checks signature and expiry, checks the blacklist, then puts the username and roles in the security context for this request.
+4. **Access rules**: public URLs pass, others need a logged-in user. No user: 401.
+5. **`@PreAuthorize`**: checks the role. Wrong role: 403.
+6. The controller runs.
 
-### 4.3 The three kinds of queries
+### 4.5 Why three filter chains?
+- `api`: stateless JWT, CSRF off. This is almost everything.
+- `csrfDemo`: needs a **session** and **CSRF on**, to demonstrate it.
+- `googleLogin`: the OAuth2 login keeps a random `state` in the session for a few seconds, so it cannot be stateless.
+Spring uses the first chain whose `securityMatcher` fits (`@Order`).
 
-| Kind | Example | Explanation |
+### 4.6 CORS vs CSRF (the question everybody asks)
+- **CORS**: a **browser** rule. A page from site A may not read the answer of site B unless B allows it (`Access-Control-Allow-Origin`). It protects the **data** from being read. Postman and curl ignore it.
+- **CSRF**: an **attack**. Site A makes your browser send a request to site B, and the browser adds your **cookie** by itself. It protects the **actions**. The defence is a secret token in the form that site A cannot read.
+- They do not replace each other: CORS does not stop a forged form from being sent, and a CSRF token does not let another site read the API.
+- **Why CSRF is off for the API**: the token is in the `Authorization` header, which a browser never adds by itself. There is no cookie to abuse.
+
+### 4.7 Hashing and data structures (the DSA part)
+| Where | What | Why |
 |---|---|---|
-| Derived | `findByAuthorUsername(String username, Pageable p)` | Spring reads the name: **find** posts **by** the **author**'s **username**. No SQL to write. |
-| JPQL | `SELECT p FROM Post p WHERE LOWER(p.title) LIKE ...` | SQL-like, but on **classes and fields** (`Post`, `p.title`), not tables. It works on any database. |
-| Native | `DELETE FROM post_tags WHERE tag_id = :tagId` | Real SQL on **tables**. Used because `post_tags` has no entity class, so JPQL cannot see it. `@Modifying` is required for DELETE and UPDATE. |
+| Passwords | BCrypt | one-way, salted, slow |
+| JWT signature | HMAC SHA-256 | detects any change |
+| Blacklist key | SHA-256 of the token | we never keep a usable token in memory |
+| `TokenBlacklist` | `ConcurrentHashMap<hash, expiry>` | checking = one lookup, **O(1)**. Thread-safe because many requests run at once. |
+| `SecurityEvents` | `ConcurrentHashMap` counters | events, requests per user, failed logins per username and IP |
 
-### 4.4 Pagination and sorting
+**Logout**: a JWT is valid until `exp` and the server has no session to delete, so on logout the **hash of the token goes in the map**. The filter checks the map on every request. Entries have the expiry date and the expired ones are removed when someone logs out.
 
-- The URL `?page=2&size=10&sort=title,asc` becomes a `Pageable` object in the controller.
-- The repository adds `ORDER BY title ASC LIMIT 10 OFFSET 20` to the SQL, plus a `COUNT` query for the total.
-- So the database sends only one page; we never load all the posts into Java.
-- `@PageableDefault` gives the default values: 10 newest posts.
-- `max-page-size=100` stops anyone from asking for a million rows.
+**Brute force**: a map counts the failed logins **in a row** for each username and each IP. At 5 a warning `BRUTE_FORCE_SUSPECTED` is logged. A successful login resets the count.
 
-### 4.5 Transactions
+### 4.8 Google login (OAuth2), step by step
+1. Browser opens `/oauth2/authorization/google`, Spring redirects to Google (with a random `state`).
+2. The user signs in at Google. Google redirects to `/login/oauth2/code/google` with a **code**.
+3. Spring checks the `state`, trades the code for an access token, and **fetches the profile** from Google.
+4. **My handler** (`OAuth2LoginSuccessHandler`) checks the email is verified, finds the user by email or **creates it as READER**, and returns **the same JWT** as a normal login.
+- The Google user gets a random password nobody knows, because the column cannot be empty.
 
-- **Transaction:** a group of SQL statements that succeed together or are undone together.
-- **`@Transactional`:** Spring starts a transaction when the method starts, commits it when the method ends, and **rolls back** if a `RuntimeException` is thrown. `BlogException` is a `RuntimeException`.
-- **Propagation `REQUIRED`** (the default): if a transaction is already running, join it; otherwise start a new one. (`REQUIRES_NEW` would always start a separate one.)
-- **Isolation `READ_COMMITTED`:** my transaction only sees data that other transactions have already **committed**, never their unfinished changes (no "dirty reads"). It is PostgreSQL's default; I wrote it to show the choice.
-- **`@Version` (optimistic locking):** each post has a version number.
-  1. Person A and person B both load version 3.
-  2. A saves first, and the version becomes 4.
-  3. B's save says "UPDATE ... WHERE version = 3", which finds no row, so Hibernate refuses it and the API answers **409**. Without it, B would silently erase A's change.
-- **Rollback demo** (`PostService.create`):
-  1. `posts.save(...)` inserts the post.
-  2. `addTags` looks up each tag; tag 999999 does not exist, so a `BlogException` is thrown.
-  3. Spring rolls back the transaction, and the INSERT from step 1 is undone.
-- **`rollbackFor = Exception.class`:** by default Spring rolls back only for a `RuntimeException` (and `Error`). With `rollbackFor = Exception.class`, **every** exception rolls back, including checked ones. It is on every write method.
-- **When a transaction fails, the client is told** (`ApiErrors`, and `GraphQlErrors` for GraphQL):
-
-  | Exception | Example | Answer |
-  |---|---|---|
-  | `BlogException` | a tag does not exist | 404 / 409 / 400 |
-  | `DataIntegrityViolationException` | title, tag name or email already used | 409, "The transaction was rolled back, nothing was saved." |
-  | `ConcurrencyFailureException` | `@Version` conflict | 409, "Your change was rolled back." |
-  | `TransactionException` | database down, commit failed | 500, "The transaction failed and was rolled back." |
-  | `DataAccessException` | any other database error | 500, "The transaction was rolled back." |
-
-- **Seeing the rollback:** the `dev` profile logs Spring's `JpaTransactionManager`. A failed write prints "Initiating transaction rollback" and then "Rolling back JPA transaction".
-- **MongoDB** (comments and reviews) is not part of the PostgreSQL transaction. So a method that writes to both does **PostgreSQL first** and forces it with `flush()` / `saveAndFlush()`, then MongoDB. If PostgreSQL fails, the transaction is rolled back and MongoDB is never touched. For example, `PostService.delete` deletes the post, calls `flush()`, and only then deletes the comments.
-
-### 4.6 Caching
-
-- **Cache:** keeping a result in memory so the next request does not go to the database.
-- `@EnableCaching` (on the application class) switches it on. `spring.cache.type=simple` means in memory, a `ConcurrentHashMap`.
-- **`@Cacheable("posts", key = "#id")`:** before running `get(id)`, Spring looks in the cache. If the post is there, the method is skipped.
-- **`@CachePut`:** the method **always runs**, then its result replaces the value in the cache. Used on `update`, so the cache holds the new version. `saveAndFlush` makes the SQL run inside the method, so if it fails, nothing goes into the cache.
-- **`@CacheEvict`:** removes the value. Used on delete, and on tag changes (`allEntries = true` clears the whole cache, because posts show tag names).
-- **Cache consistency:** a cached post **contains its author and its tags**. So when a user is updated, `UserService.update` does three things:
-  1. `@CachePut` puts the new user in the `users` cache.
-  2. `@CacheEvict(value = "posts", allEntries = true)` clears the posts cache, so no post shows the old name.
-  3. It updates the name copied into that user's comments and reviews in MongoDB.
-
-  `@Caching` groups the two annotations on one method. Tag changes clear the posts cache in the same way.
-
-### 4.7 Optimization
-
-- **Index:** like the index of a book. With `idx_posts_created_at`, PostgreSQL finds the 10 newest posts without reading all 20,000. Declared with `@Index` in `Post.java`.
-- **N+1 problem:** loading a page of 10 posts costs 1 query, then 1 query per post for its tags, so 11 or more. `@BatchSize(size = 50)` makes Hibernate load the tags of the whole page in **one** query.
+### 4.9 `@PreAuthorize`
+Needs `@EnableMethodSecurity`. `hasRole('ADMIN')` checks the authority `ROLE_ADMIN`, that is why the filter adds the prefix `ROLE_`. It works the same on REST and GraphQL controllers. If it fails, Spring throws `AccessDeniedException`, and my error handlers (`ApiErrors`, `GraphQlErrors`) turn it into 403 / `FORBIDDEN`.
 
 ---
 
 ## 5. Demo script (about 10 minutes)
 
-1. **Structure** (1 min): show the packages `controller → service → repository → entity`.
-2. **Entities and Hibernate** (1 min): open `Post.java` and point at `@ManyToOne`, `@ManyToMany`, `@Index` and `@Version`. Then in psql: `\d posts` and `\d post_tags`.
-3. **Queries** (2 min): open `PostRepository` and `TagRepository` and name the three kinds. In Postman, run "Posts of one author", "Search posts by keyword", and "List posts - page, size, sort" with `sort=title,asc`.
-4. **Rollback** (2 min):
-   1. Run "List posts" and note `totalElements`.
-   2. Run "Rollback demo": you get a 404, "Tag 999999 was not found".
-   3. Run "List posts" again: `totalElements` is the same, so the inserted post was rolled back.
-   4. Show `PostService.create` and explain the three steps.
-   5. Show the console: "Initiating transaction rollback" / "Rolling back JPA transaction".
-   6. Run "Same title again" twice: the second gives 409, "The transaction was rolled back, nothing was saved."
-5. **Concurrency**: show `@Version` and the 409 handler. In psql, `SELECT id, title, version FROM posts;` before and after an update shows the version going up.
-6. **Cache** (2 min):
-   1. Send "Get post (cached)" twice.
-   2. In the terminal, the first `PostService.get(..) success in` shows a few ms, the second under 1 ms.
-   3. Run "Update post", then "Get post": the new title appears with no SQL (`@CachePut`).
-   4. Optional: restart with `--spring.cache.type=none` and show that the second call is slow again.
-7. **Cache consistency** (1 min):
-   1. Send "Get post (cached)": note the author's `displayName`.
-   2. Run "Update user" with a new `displayName`.
-   3. Send "Get post (cached)" again: the post shows the **new** name.
-   4. "List comments" also shows the new `authorName`.
-8. **Performance report** (1 min): show the before and after tables.
-9. **GraphQL** (30 s): in GraphiQL, run block 7 of `docs/examples.graphql`.
+1. **Picture** (README): walk through the six layers, 1 minute.
+2. **Register and login** (Postman folder 0, or Swagger): register an author, log in, paste the token on jwt.io, show `sub`, `roles`, `exp`. In psql show the BCrypt hash.
+3. **Roles** (folder 7): reader creates a tag: 403. Author creates a tag: 201. Author lists users: 403. Admin lists users: 200. Show `@PreAuthorize` in `PostController`.
+4. **Token attacks** (folder 8): no token 401, tampered 401, expired 401. Log out, reuse the token: 401 "revoked".
+5. **Brute force**: run the 6 wrong passwords request, call `GET /api/security/report` as admin, show `suspiciousSources`, then show `BRUTE_FORCE_SUSPECTED` in `logs/application.log`.
+6. **CORS** (folder 9): allowed origin 200, evil origin 403.
+7. **CSRF**: browser, `/csrf-demo/form`, submit both forms (200 then 403). Explain why the API has CSRF off.
+8. **Google**: open `/oauth2/authorization/google`, sign in, show the JSON with the token and the new user in the database.
+9. **Swagger**: padlocks on secured endpoints, none on `/auth/login` and `/auth/register`.
 
 ---
 
 ## 6. Questions the coach may ask
 
-| Question | Short answer |
-|---|---|
-| Difference between `JpaRepository` and `CrudRepository`? | `CrudRepository` has basic CRUD. `JpaRepository` extends it and adds paging and sorting, `saveAndFlush`, and batch methods. |
-| Who creates the tables? | Hibernate, from the entities, because of `spring.jpa.hibernate.ddl-auto=update`. |
-| How does `findByTagsName` work without SQL? | Spring Data parses the method name: `tags` is the collection field, `name` is a field of `Tag`. It builds the join and the WHERE clause. |
-| Why a native query? | `post_tags` is a join table without an entity, so JPQL cannot reach it. Native SQL can. |
-| What is `@Modifying`? | It tells Spring Data that the query changes data (DELETE or UPDATE) instead of reading. |
-| What happens if an exception is thrown in a `@Transactional` method? | For a `RuntimeException`, everything done in the method is rolled back. For a checked exception, add `rollbackFor`. |
-| `REQUIRED` vs `REQUIRES_NEW`? | `REQUIRED` joins the current transaction. `REQUIRES_NEW` suspends it and starts a separate one that commits on its own. |
-| Isolation levels? | READ_UNCOMMITTED, READ_COMMITTED (PostgreSQL default), REPEATABLE_READ, SERIALIZABLE. The higher the level, the safer and the slower. |
-| `@Cacheable` vs `@CachePut` vs `@CacheEvict`? | Read from the cache and skip the method / always run the method and update the cache / remove from the cache. |
-| Where is the cache stored? | In the application's memory (`spring.cache.type=simple`). It is lost on restart, and it is not shared between several servers (Redis would be used for that). |
-| Why EAGER for tags? | The tags are always shown with a post, and it avoids "lazy loading" errors when the post is turned into JSON. `@BatchSize` keeps it efficient. |
-| What is `rollbackFor`? | By default only a `RuntimeException` rolls back. `rollbackFor = Exception.class` makes any exception roll back. |
-| What happens if the database is down during a write? | Spring cannot start or commit the transaction and throws a `TransactionException`. `ApiErrors` answers 500, "The transaction failed and was rolled back". Nothing is saved. |
-| How do you keep the cache consistent? | Every write that changes cached data refreshes it. A post in the cache contains its author, so updating a user also clears the posts cache (`@Caching` with `@CachePut` + `@CacheEvict`). |
-| Why `flush()` before writing to MongoDB? | MongoDB is not in the PostgreSQL transaction. `flush()` runs the SQL now, so if PostgreSQL fails we stop before MongoDB is changed. |
-| What does `@Version` do? | Optimistic locking: it refuses an update based on an old version of the row, so two people cannot erase each other's changes. |
-| Why are comments in MongoDB? | That was the Platform I design (flexible, unstructured data for comments and reviews). Lab 3 says to keep the database "as implemented in Week 4". |
+**Why JWT and not sessions?** The API is stateless: no session in memory, easy to scale, and it works for Postman, React and JavaFX. The token carries the username and role.
+
+**Can someone change the role inside the token?** No. The payload is only Base64, so anyone can read it, but the signature is made with the server secret. If the role changes, the signature check fails and the answer is 401.
+
+**What happens if the secret is stolen?** Anyone could create valid tokens. That is why the secret is long, comes from an environment variable in production (`JWT_SECRET`), and is never in the repository for prod.
+
+**Why is the token valid after logout?** It would be, because the server has no session. So I put its hash in a blacklist map until it expires, and the filter checks the map.
+
+**Why do you hash the token before putting it in the map?** So we never keep a token that can be used. If someone reads the memory, they only see hashes.
+
+**Why a hash map?** Lookup in O(1) with one call, however many tokens are revoked. `ConcurrentHashMap` because many requests read it while a logout writes.
+
+**What is the weakness of the blacklist?** It is in memory: empty after a restart, and not shared between several servers. A real system would use Redis.
+
+**Difference between 401 and 403?** 401: not logged in (or bad token). 403: logged in, but the role is not allowed.
+
+**Why is CSRF disabled?** CSRF abuses the cookie that the browser sends by itself. The API uses a header token, so there is nothing to abuse. For the form I left it on, and the demo shows it.
+
+**Difference between CORS and CSRF?** See 4.6.
+
+**Does CORS protect the API from Postman?** No. CORS is enforced by browsers. Authentication is what protects the API.
+
+**What does `hasRole('ADMIN')` check?** The authority `ROLE_ADMIN`. The filter builds the authorities from the `roles` claim by adding `ROLE_`.
+
+**Where is the password checked?** In `AuthService.login`: `AuthenticationManager.authenticate(...)`. Spring uses my `AccountUserDetailsService` to load the user and `BCryptPasswordEncoder` to compare.
+
+**What if the user logs in with Google and an account with that email exists?** The existing account is used with its role. A new user becomes READER. An unverified Google email is refused.
+
+**How does the app decide a login is a brute force?** 5 failed logins in a row for the same username (or the same IP). A good login resets the count. It is detected and logged, not blocked.
+
+**Why is `JwtAuthenticationFilter` created with `new` and not with `@Component`?** A `@Component` filter is also registered by Spring Boot for every request, outside the security chain. With `new` it only runs inside the chain.
+
+**Why is `Role` an enum and not an entity?** One role per user is enough here, an enum is simple and safe (`@Enumerated(EnumType.STRING)`). A `Role` table would be needed for several roles per user or roles created at runtime.
+
+**How would you protect a new endpoint?** Add `@PreAuthorize("hasRole('ADMIN')")` above the method. Public URLs are only the ones listed in `SecurityConfig.api`.
+
+**How did you test?** A Postman collection with 93 checks: login and token claims, the role table over REST and GraphQL, tampered, expired and revoked tokens, brute force, CORS, CSRF, and the redirect to Google.
 
 ---
 
 ## 7. Weak points (know them before the coach finds them)
 
-- **Keyword search is slow on big data.** `LIKE '%word%'` cannot use a normal index, so PostgreSQL reads every post: about 300 ms on 20,000 posts. It is honest in the report. The fix for a large site is PostgreSQL full-text search, which is out of scope for this lab.
-- **"Complex JPQL queries optimized".** My JPQL query is simple on purpose. The optimizations I measured are the indexes and `@BatchSize`. If asked, explain the N+1 problem and show the numbers (13 or 53 statements → 4).
-- **No comparison with the Week 5 (Platform II) version in the report.** The overview mentions it, but the acceptance criteria do not. If asked: Platform II used hand-written JDBC with no cache; Platform III adds the cache (reads 6 to 12 times faster) and repository paging.
-- **No automated tests.** Rollback is shown by hand with Postman. The brief says "verified" and "tested for rollback scenarios", so do the demo live.
-- **MongoDB writes are not in the PostgreSQL transaction.** Each comment or review save is atomic on its own, and a method that writes to both always does PostgreSQL first (`flush()`), then MongoDB. If MongoDB failed after PostgreSQL succeeded, the PostgreSQL part would still be rolled back (the exception happens before the commit), but MongoDB changes already made would stay. A full fix needs MongoDB transactions (replica set), which is out of scope.
-- **`@CachePut` is an extra.** The brief only asks for `@Cacheable` and `@CacheEvict`; `@CachePut` is used on top for updates.
+1. **`Role` is an enum, not a table.** The brief says "User and Role entities". Say why (question above), and that a table is a small change if needed.
+2. **No ownership check.** The role decides what you may do, but an AUTHOR can pass any `authorId` when creating a post (as in Lab 3). The lab only asks for role-based rules.
+3. **A token stays valid until it expires**, even if the user is deleted or the role changes, unless the user logs out. The lifetime is 60 minutes.
+4. **The blacklist and counters are in memory** (lost on restart, one server only). Entries of expired tokens are removed only when somebody logs out.
+5. **Brute force is detected, not blocked.** No account lock. The failed-login map is never cleaned for usernames that never log in successfully.
+6. **Plain HTTP.** In production it must be HTTPS, otherwise a Bearer token can be read.
+7. **Dev secrets are in the repository** (`application-dev.properties`: JWT secret and admin password). They are for local use only. `prod` requires `JWT_SECRET` and `ADMIN_PASSWORD`.
+8. **Google login can only be fully tried in a browser.** Postman only checks the redirect to Google. The token appears as JSON on the page (a real frontend would receive it by redirect).
+9. **One role per user.**
+
+---
+
+## 8. Code map (read these files before the review, in this order)
+
+| # | File | What to remember |
+|---|---|---|
+| 1 | `config/SecurityConfig` | 3 chains, BCrypt bean, `@EnableMethodSecurity` |
+| 2 | `filter/JwtAuthenticationFilter` | read header, `jwt.parse`, blacklist check, `logIn` |
+| 3 | `service/JwtService` | `generate` (claims, HS256) and `parse` |
+| 4 | `service/AuthService` | `register`, `login`, `logout` |
+| 5 | `service/TokenBlacklist` | map of SHA-256 hash to expiry |
+| 6 | `service/SecurityEvents` | log lines, counters, brute force, report |
+| 7 | `handler/JsonSecurityHandlers` | 401 and 403 as JSON |
+| 8 | `handler/OAuth2LoginSuccessHandler` + `UserService.findOrCreateGoogleUser` | Google user to READER + JWT |
+| 9 | `config/CorsConfig` | origins, methods, headers |
+| 10 | `controller/rest/CsrfDemoController` | the form with the hidden `_csrf` |
+| 11 | `controller/rest/PostController` | `@PreAuthorize` examples |
+| 12 | `config/AdminSeeder` | first ADMIN at startup |
+
+**Small changes the coach may ask for:**
+- *Token lifetime*: `app.jwt.expiration-minutes` in `application.properties`.
+- *Another allowed origin*: `app.cors.allowed-origins` (or `CORS_ALLOWED_ORIGINS`).
+- *Change who can delete posts*: the `@PreAuthorize` above `delete` in `PostController`.
+- *Brute-force limit*: `FAILURE_LIMIT` in `SecurityEvents`.
+- *Make an endpoint public*: add its URL to `permitAll()` in the `api` chain of `SecurityConfig`.

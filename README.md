@@ -52,7 +52,8 @@ src/main/java/com/example/Blogging_Platform_IV
 ├── service       all the logic: AuthService, JwtService, UserService, PostService, TagService, ...
 │                 plus AccountUserDetailsService, TokenBlacklist and SecurityEvents
 ├── repository    Spring Data interfaces
-├── entity        User, Role, Post, Tag, Comment, Review
+├── entity        User, Post, Tag, Comment, Review
+├── enums         Role (ADMIN, AUTHOR, READER)
 ├── dto           request bodies with validation
 ├── validation    @UniqueAccount
 └── exception     BlogException
@@ -91,7 +92,7 @@ Without these two values the app still starts, and only the Google login fails.
 
 ## 5. Roles
 
-`Role` is a Java enum (`ADMIN`, `AUTHOR`, `READER`) saved as text in the column `users.role`. Each user has one role, and it is copied into the JWT.
+`Role` (in `enums/`) is a Java enum (`ADMIN`, `AUTHOR`, `READER`) saved as text in the column `users.role`. Each user has one role, and it is copied into the JWT.
 
 | What | ADMIN | AUTHOR | READER | No token |
 |---|:-:|:-:|:-:|:-:|
@@ -231,7 +232,7 @@ The dev secret and the dev admin password are in this public repository: use the
 | BCrypt | `config/SecurityConfig` (`passwordEncoder`), `service/UserService` |
 | JWT login, token claims, validation, `401` | `controller/rest/AuthController`, `service/AuthService`, `service/JwtService`, `handler/JsonSecurityHandlers` |
 | Google OAuth2, user saved, role assigned | `config/SecurityConfig` (`googleLogin`), `handler/OAuth2LoginSuccessHandler`, `service/UserService` (`findOrCreateGoogleUser`) |
-| Roles and `@PreAuthorize` | `entity/Role`, all classes in `controller/` |
+| Roles and `@PreAuthorize` | `enums/Role`, all classes in `controller/` |
 | First ADMIN account | `config/AdminSeeder` |
 | CORS | `config/CorsConfig` |
 | CSRF explanation and demo | `config/SecurityConfig` (`csrfDemo`), `controller/rest/CsrfDemoController`, section 6 |
