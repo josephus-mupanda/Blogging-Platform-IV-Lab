@@ -8,12 +8,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
@@ -45,20 +45,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring("Bearer ".length()).trim();
             try {
-                Claims claims = jwt.parse(token);
-                if (blacklist.isRevoked(token)) {
+                Claims claims = jwt.parse(token);              // checks the signature and the expiry date
+                if (blacklist.isRevoked(token)) {              // the user logged out with this token
                     reject(request, "The token was revoked by a logout. Log in again.");
-                    chain.doFilter(request, response);
-                    return;
+                } else {
+                    logIn(claims, request);
                 }
-                List<?> roles = claims.get("roles", List.class);
-                List<GrantedAuthority> authorities = roles == null ? List.of() : roles.stream()
-                        .<GrantedAuthority>map(role -> new SimpleGrantedAuthority("ROLE_" + role)).toList();
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(claims.getSubject(), null, authorities);
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                events.tokenUsed(claims.getSubject(), request.getRequestURI());
             } catch (ExpiredJwtException e) {
                 reject(request, "The token has expired. Log in again.");
             } catch (JwtException | IllegalArgumentException e) {
@@ -66,6 +58,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
         chain.doFilter(request, response);
+    }
+
+    /** Puts the username and the roles of the token into the security context of this request. */
+    private void logIn(Claims claims, HttpServletRequest request) {
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        List<?> roles = claims.get("roles", List.class);
+        if (roles != null) {
+            for (Object role : roles) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));   // hasRole('ADMIN') checks ROLE_ADMIN
+            }
+        }
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(claims.getSubject(), null, authorities));
+        events.tokenUsed(claims.getSubject(), request.getRequestURI());
     }
 
     private void reject(HttpServletRequest request, String reason) {
