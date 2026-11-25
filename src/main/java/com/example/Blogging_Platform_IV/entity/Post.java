@@ -54,12 +54,8 @@ public class Post {
     @JoinColumn(name = "author_id")
     private User author;
 
-    /**
-     * A post has many tags and a tag is used by many posts (join table post_tags).
-     * EAGER: the tags are always loaded with the post.
-     * BatchSize: for a page of posts, Hibernate loads the tags of up to 50 posts in one query
-     * instead of one query per post.
-     */
+    // Many tags per post and many posts per tag (join table post_tags).
+    // EAGER: the tags are loaded with the post. BatchSize: the tags of 50 posts are loaded in one query.
     @ManyToMany(fetch = FetchType.EAGER)
     @BatchSize(size = 50)
     @JoinTable(name = "post_tags",
@@ -76,10 +72,7 @@ public class Post {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    /**
-     * Optimistic locking: Hibernate adds 1 at every update. If two people save the same post at
-     * the same time, the second save is refused instead of silently erasing the first one.
-     */
+    // Optimistic locking: if two people save the same post at the same time, the second save is refused.
     @Version
     @JsonIgnore
     private Long version;

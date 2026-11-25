@@ -8,11 +8,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface TagRepository extends JpaRepository<Tag, Long> {
 
-    /**
-     * Native SQL query: plain PostgreSQL SQL on the table names.
-     * The join table post_tags has no entity class, so JPQL cannot reach it. Before a tag is
-     * deleted, this removes it from every post. @Modifying is needed for DELETE and UPDATE.
-     */
+    // Native SQL: post_tags is a join table without an entity, so JPQL cannot reach it.
+    // @Modifying is needed for DELETE and UPDATE.
     @Modifying
     @Query(value = "DELETE FROM post_tags WHERE tag_id = :tagId", nativeQuery = true)
     void removeTagFromPosts(@Param("tagId") Long tagId);

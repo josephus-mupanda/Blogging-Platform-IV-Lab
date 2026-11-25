@@ -44,10 +44,7 @@ public class TagService {
         return tags.save(tag);
     }
 
-    /**
-     * Two statements in one transaction: remove the tag from every post (native query), then
-     * delete the tag. If the second statement fails, the first one is rolled back too.
-     */
+    // Two statements, one transaction: remove the tag from the posts (native query), then delete it.
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = {"tags", "posts"}, allEntries = true)
     public void delete(Long id) {

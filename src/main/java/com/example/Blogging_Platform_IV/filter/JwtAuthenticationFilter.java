@@ -1,6 +1,5 @@
 package com.example.Blogging_Platform_IV.filter;
 
-import com.example.Blogging_Platform_IV.handler.JsonSecurityHandlers;
 import com.example.Blogging_Platform_IV.service.JwtService;
 import com.example.Blogging_Platform_IV.service.SecurityEvents;
 import com.example.Blogging_Platform_IV.service.TokenBlacklist;
@@ -20,16 +19,10 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/**
- * Runs once for every request, before the controllers. If the request carries
- * "Authorization: Bearer <token>", the token is checked and the user is logged in for this one
- * request. If there is no token, or the token is bad, nobody is logged in and Spring Security
- * answers 401 for every endpoint that needs a login.
- *
- * Nothing is stored between requests (no session): the token is sent again each time.
- */
+// Runs once per request. If there is a valid "Authorization: Bearer <token>" header, the user is
+// logged in for this request only (no session). Otherwise nobody is logged in and Spring answers 401.
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    /** The reason a token was refused, read by JsonSecurityHandlers to write the 401 message. */
+    // The reason a token was refused. JsonSecurityHandlers uses it as the 401 message.
     public static final String TOKEN_ERROR = "jwt.error";
 
     private final JwtService jwt;
@@ -49,8 +42,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring("Bearer ".length()).trim();
             try {
-                Claims claims = jwt.parse(token);              // checks the signature and the expiry date
-                if (blacklist.isRevoked(token)) {              // the user logged out with this token
+                Claims claims = jwt.parse(token);   // checks the signature and the expiry date
+                if (blacklist.isRevoked(token)) {
                     reject(request, "The token was revoked by a logout. Log in again.");
                 } else {
                     logIn(claims, request);
@@ -64,13 +57,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    /** Puts the username and the roles of the token into the security context of this request. */
+    // Puts the username and the roles of the token in the security context.
     private void logIn(Claims claims, HttpServletRequest request) {
         List<GrantedAuthority> authorities = new ArrayList<>();
         List<?> roles = claims.get("roles", List.class);
         if (roles != null) {
             for (Object role : roles) {
-                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));   // hasRole('ADMIN') checks ROLE_ADMIN
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
             }
         }
         SecurityContextHolder.getContext().setAuthentication(

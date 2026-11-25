@@ -9,20 +9,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.HtmlUtils;
 
-/**
- * A small form-based endpoint that shows the CSRF token mechanism. It is protected by its own
- * security filter chain (see SecurityConfig), the only one where CSRF protection is switched on,
- * because a form served to a browser works with a session cookie.
- *
- * How it works:
- *   1. GET /csrf-demo/form  Spring creates a session and a random CSRF token stored in that session.
- *      The page contains the token in a hidden field called _csrf.
- *   2. POST /csrf-demo/submit  Spring compares the _csrf field with the token in the session.
- *      Same value: the request runs. Missing or different value: 403 and the method is not called.
- *
- * Another website cannot copy the token: it cannot read this page (same-origin policy), so a form
- * it submits in the user's browser carries the session cookie but not the token, and is refused.
- */
+// Demo of the CSRF token. This is the only chain with CSRF protection on (see SecurityConfig).
+// GET /csrf-demo/form: Spring creates a session and a token, and the form contains it (hidden field _csrf).
+// POST /csrf-demo/submit: Spring compares the _csrf field with the token of the session. No match: 403.
 @RestController
 @RequestMapping("/csrf-demo")
 public class CsrfDemoController {

@@ -50,10 +50,7 @@ public class ApiErrors {
         return ResponseEntity.status(status).body(ApiResponse.error(exception.getMessage(), null));
     }
 
-    /**
-     * @PreAuthorize refused the call: the user is logged in, but their role is not allowed here.
-     * Without this handler the catch-all below would turn it into a 500.
-     */
+    // @PreAuthorize refused the call: logged in, but the role is not allowed. Without this it would be a 500.
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> forbidden(AccessDeniedException exception, HttpServletRequest request) {
         events.accessDenied(SecurityContextHolder.getContext().getAuthentication().getName(), request.getRequestURI());
@@ -71,10 +68,7 @@ public class ApiErrors {
     // ----- Errors that make a transaction fail. In every case Spring has already rolled the -----
     // ----- transaction back before we get here, so the database is unchanged.               -----
 
-    /**
-     * Two requests saved the same post at the same time. The @Version column in Post makes
-     * Hibernate refuse the second save. Its transaction is rolled back and the client can retry.
-     */
+    // Two requests saved the same post at the same time (@Version). The second one is rolled back.
     @ExceptionHandler(ConcurrencyFailureException.class)
     public ResponseEntity<ApiResponse<Void>> concurrentChange(ConcurrencyFailureException exception) {
         LOG.warn("Concurrent update refused, transaction rolled back: {}", exception.getMessage());
@@ -91,10 +85,7 @@ public class ApiErrors {
                 "A record already uses this value. The transaction was rolled back, nothing was saved.", null));
     }
 
-    /**
-     * The transaction itself could not start or commit, for example because the database is
-     * down (CannotCreateTransactionException) or the commit failed (TransactionSystemException).
-     */
+    // The transaction could not start or commit, for example because the database is down.
     @ExceptionHandler(TransactionException.class)
     public ResponseEntity<ApiResponse<Void>> transactionFailed(TransactionException exception) {
         LOG.error("Transaction failed and was rolled back", exception);
@@ -140,10 +131,7 @@ public class ApiErrors {
         return ResponseEntity.badRequest().body(ApiResponse.error("The request body could not be read.", null));
     }
 
-    /**
-     * An address that matches no endpoint, such as the /favicon.ico a browser asks for on its own.
-     * This is a normal 404, not a server fault, so it is logged quietly and without a stack trace.
-     */
+    // An address that matches no endpoint (like /favicon.ico). A normal 404, so it is not logged as an error.
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ApiResponse<Void>> unknownAddress(NoResourceFoundException exception) {
         LOG.debug("No endpoint for {}", exception.getResourcePath());

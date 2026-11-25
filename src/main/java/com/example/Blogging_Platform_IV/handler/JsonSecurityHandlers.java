@@ -15,11 +15,8 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
-/**
- * Writes the two security errors in the same JSON shape as every other REST response:
- * 401 when nobody is logged in (no token, bad token, expired token),
- * 403 when somebody is logged in but their role is not allowed.
- */
+// Writes the security errors as JSON, like the rest of the API:
+// 401 when nobody is logged in, 403 when the role is not allowed.
 @Component
 public class JsonSecurityHandlers implements AuthenticationEntryPoint, AccessDeniedHandler {
     private final ObjectMapper mapper;
@@ -30,24 +27,27 @@ public class JsonSecurityHandlers implements AuthenticationEntryPoint, AccessDen
         this.events = events;
     }
 
+    // 401
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException exception) throws IOException {
         Object reason = request.getAttribute(JwtAuthenticationFilter.TOKEN_ERROR);
-        // A rejected token was already logged by the filter. Only a request with no token is logged here.
-        if (reason == null) {
+        String message = "Log in first: send a Bearer token.";
+        if (reason != null) {
+            message = reason.toString();   // the token was bad: the filter already logged it
+        } else {
             events.unauthenticatedRequest(request.getRemoteAddr(), request.getRequestURI());
         }
-        String message = reason != null ? reason.toString() : "Log in first: send a Bearer token.";
         response.setHeader("WWW-Authenticate", "Bearer");
         write(response, HttpStatus.UNAUTHORIZED, message);
     }
 
+    // 403
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException exception) throws IOException {
-        events.accessDenied(request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : "unknown",
-                request.getRequestURI());
+        String username = request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : "unknown";
+        events.accessDenied(username, request.getRequestURI());
         write(response, HttpStatus.FORBIDDEN, "Your role is not allowed to do this.");
     }
 

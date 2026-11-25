@@ -13,11 +13,8 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
     private static final String BEARER = "bearerAuth";
 
-    /**
-     * Every endpoint is documented as secured by a JWT (the padlock and the Authorize button in
-     * Swagger UI). The two public endpoints in AuthController remove that requirement with
-     * @SecurityRequirements.
-     */
+    // Swagger shows every endpoint as secured by a JWT (padlock + Authorize button).
+    // The public endpoints in AuthController remove this with @SecurityRequirements.
     @Bean
     OpenAPI bloggingApi() {
         return new OpenAPI()

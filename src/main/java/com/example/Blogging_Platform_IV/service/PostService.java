@@ -59,12 +59,8 @@ public class PostService {
         return posts.findById(id).orElseThrow(() -> BlogException.notFound("Post"));
     }
 
-    /**
-     * Propagation REQUIRED (the default): the method runs in one transaction.
-     * The post is inserted first, then its tags are added. If a tag does not exist, the
-     * exception rolls the transaction back and the post that was just inserted disappears.
-     * rollbackFor = Exception.class: roll back for any exception, not only RuntimeException.
-     */
+    // Propagation REQUIRED (default): one transaction. The post is inserted, then its tags are added.
+    // If a tag does not exist, everything is rolled back, including the post.
     @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
     public Post create(Long authorId, String title, String body, List<Long> tagIds) {
         User author = users.findById(authorId).orElseThrow(() -> BlogException.notFound("Author"));
@@ -73,13 +69,9 @@ public class PostService {
         return post;
     }
 
-    /**
-     * Isolation READ_COMMITTED: this transaction only reads data that other transactions have
-     * already committed. If someone else saves the same post at the same time, the @Version
-     * column in Post makes Hibernate refuse the second save (HTTP 409).
-     * @CachePut puts the updated post in the "posts" cache. saveAndFlush sends the UPDATE now,
-     * so if it fails (title already used, concurrent change) nothing is put in the cache.
-     */
+    // Isolation READ_COMMITTED: only reads data that other transactions have committed.
+    // @CachePut puts the updated post in the cache. saveAndFlush runs the UPDATE now, so a failure
+    // happens before anything is cached.
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     @CachePut(value = "posts", key = "#id")
     public Post update(Long id, String title, String body, List<Long> tagIds) {
@@ -91,11 +83,7 @@ public class PostService {
         return posts.saveAndFlush(post);
     }
 
-    /**
-     * Deletes the post (and its post_tags rows) in PostgreSQL first: flush runs the DELETE now.
-     * Only if that works are its comments and reviews deleted in MongoDB. If the PostgreSQL
-     * delete fails, the transaction is rolled back and MongoDB is never touched.
-     */
+    // PostgreSQL first (flush runs the DELETE now), then the comments and reviews in MongoDB.
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = "posts", key = "#id")
     public void delete(Long id) {
