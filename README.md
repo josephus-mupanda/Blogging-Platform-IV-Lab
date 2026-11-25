@@ -26,7 +26,7 @@ In plain words:
 5. **`@PreAuthorize`**: checks the role. `401` means "who are you?", `403` means "you are not allowed".
 6. The controller runs.
 
-### Three filter chains (`SecurityConfig`)
+### Three filter chains (`config/SecurityConfig`)
 
 | Chain | URLs | Session | CSRF | Why |
 |---|---|---|---|---|
@@ -40,7 +40,25 @@ In plain words:
 
 ---
 
-## 3. Quick start
+## 3. Project structure
+
+```
+src/main/java/com/example/Blogging_Platform_IV
+├── config        SecurityConfig (filter chains, BCrypt), CorsConfig, OpenApiConfig, GraphQlConfig,
+│                 ServiceMonitoring (AOP logging), AdminSeeder (creates the first ADMIN)
+├── filter        JwtAuthenticationFilter (checks the token on every request)
+├── handler       JsonSecurityHandlers (the 401 and 403 answers), OAuth2LoginSuccessHandler (after Google login)
+├── controller    rest/ (AuthController, UserController, PostController, ...) and graphql/
+├── service       all the logic: AuthService, JwtService, UserService, PostService, TagService, ...
+│                 plus AccountUserDetailsService, TokenBlacklist and SecurityEvents
+├── repository    Spring Data interfaces
+├── entity        User, Role, Post, Tag, Comment, Review
+├── dto           request bodies with validation
+├── validation    @UniqueAccount
+└── exception     BlogException
+```
+
+## 4. Quick start
 
 You need JDK 21, PostgreSQL and MongoDB running.
 
@@ -71,7 +89,7 @@ Without these two values the app still starts, and only the Google login fails.
 
 ---
 
-## 4. Roles
+## 5. Roles
 
 `Role` is a Java enum (`ADMIN`, `AUTHOR`, `READER`) saved as text in the column `users.role`. Each user has one role, and it is copied into the JWT.
 
@@ -91,10 +109,10 @@ Without these two values the app still starts, and only the Google login fails.
 
 ---
 
-## 5. The features, one by one
+## 6. The features, one by one
 
 ### Passwords: BCrypt
-`BCryptPasswordEncoder` (bean in `SecurityConfig`) hashes the password in `UserService.create`. The database stores `$2a$10$...`, never the password. At login Spring Security hashes the typed password and compares it with the stored hash.
+`BCryptPasswordEncoder` (bean in `config/SecurityConfig`) hashes the password in `UserService.create`. The database stores `$2a$10$...`, never the password. At login Spring Security hashes the typed password and compares it with the stored hash.
 
 ### JWT login
 `POST /auth/login` with `{ "username": "...", "password": "..." }` returns a token. A JWT has three parts: `header.payload.signature`. Paste one into [jwt.io](https://jwt.io) or decode it in Postman:
@@ -119,10 +137,10 @@ The signature is an **HMAC SHA-256** of `header.payload` with a secret only the 
 | expired | `401` The token has expired |
 | after logout | `401` The token was revoked |
 
-Code: `JwtService` (create and check), `JwtAuthenticationFilter` (use it on every request), `AuthController` and `AuthService` (login, register, logout).
+Code: `service/JwtService` (create and check), `filter/JwtAuthenticationFilter` (use it on every request), `controller/rest/AuthController` and `service/AuthService` (login, register, logout).
 
 ### Google login (OAuth2)
-Spring Security's OAuth2 Client does the Google part (redirect, code exchange, reading the profile). Our part is `OAuth2LoginSuccessHandler`: it takes the verified email and name from Google, finds the user by email or **saves a new one as READER in PostgreSQL**, then returns the **same JWT** as a normal login. Config: `application.properties` (`spring.security.oauth2.client.registration.google...`).
+Spring Security's OAuth2 Client does the Google part (redirect, code exchange, reading the profile). Our part is `handler/OAuth2LoginSuccessHandler`: it takes the verified email and name from Google, finds the user by email or **saves a new one as READER in PostgreSQL**, then returns the **same JWT** as a normal login. Config: `application.properties` (`spring.security.oauth2.client.registration.google...`).
 
 ### CORS and CSRF
 They protect against different things:
@@ -133,7 +151,7 @@ They protect against different things:
 | Who checks | the browser, with headers from the server | the server, with a secret token |
 | Needed when | a browser app (React, JavaFX) on another origin calls the API | the user is identified by a **cookie** |
 
-**CORS setup** (`SecurityConfig.corsConfigurationSource`): allowed origins `http://localhost:3000` and `http://localhost:5173`, methods `GET POST PUT DELETE OPTIONS`, headers `Authorization Content-Type Accept`. Any other origin gets **403 Invalid CORS request**.
+**CORS setup** (`config/CorsConfig`): allowed origins `http://localhost:3000` and `http://localhost:5173`, methods `GET POST PUT DELETE OPTIONS`, headers `Authorization Content-Type Accept`. Any other origin gets **403 Invalid CORS request**.
 
 **CSRF**: it is **off for the JWT API**, because there is no cookie to abuse: the token is in the `Authorization` header and a browser never adds that header by itself. It is **on for forms**. Demo at <http://localhost:8080/csrf-demo/form>: the first form has the hidden `_csrf` token and works, the second form has none and gets **403**.
 
@@ -144,13 +162,13 @@ They protect against different things:
 | Passwords | BCrypt hash | one-way, salted, slow to guess |
 | JWT | HMAC SHA-256 signature | detects any change of the token |
 | Blacklist key | SHA-256 of the token | no usable token is kept in memory |
-| `TokenBlacklist` | `ConcurrentHashMap<hash, expiry>` | logged-out tokens, checked in O(1) with one lookup. Expired entries are removed. |
-| `SecurityEvents` | hash maps of counters | events per type, requests per user, failed logins per username and IP |
+| `service/TokenBlacklist` | `ConcurrentHashMap<hash, expiry>` | logged-out tokens, checked in O(1) with one lookup. Expired entries are removed. |
+| `service/SecurityEvents` | hash maps of counters | events per type, requests per user, failed logins per username and IP |
 
 `POST /auth/logout` puts the token's hash in the blacklist until the token would expire anyway. The map is in memory, so it is empty after a restart (a real deployment would use Redis).
 
 ### Security logging and report
-`SecurityEvents` writes one line per event on the logger `security.audit`, to the console and to `logs/application.log`:
+`service/SecurityEvents` writes one line per event on the logger `security.audit`, to the console and to `logs/application.log`:
 
 ```
 LOGIN_SUCCESS user=admin ip=127.0.0.1
@@ -175,7 +193,7 @@ Select-String "ACCESS_DENIED|UNAUTHENTICATED_REQUEST" logs\application.log
 
 ---
 
-## 6. Test everything
+## 7. Test everything
 
 Import [docs/postman_collection.json](docs/postman_collection.json) and run the **whole collection** (Collection Runner, top to bottom). Every request has a test. Run it on the dev profile.
 
@@ -192,7 +210,7 @@ The Google login itself needs a browser (step 4 of the Google setup). The collec
 
 Other ways to try it: **Swagger UI** (secured endpoints have a padlock, `/auth/register` and `/auth/login` have none), **GraphiQL** at <http://localhost:8080/graphiql> (set the header `Authorization: Bearer <token>`, see [docs/examples.graphql](docs/examples.graphql)).
 
-## 7. Settings
+## 8. Settings
 
 | Property | Environment variable | Default |
 |---|---|---|
@@ -205,23 +223,24 @@ Other ways to try it: **Swagger UI** (secured endpoints have a padlock, `/auth/r
 
 The dev secret and the dev admin password are in this public repository: use them locally only.
 
-## 8. Where each requirement is implemented
+## 9. Where each requirement is implemented
 
 | Requirement | Where |
 |---|---|
-| Spring Security, custom filters, `SecurityFilterChain` | `security/SecurityConfig`, `security/JwtAuthenticationFilter` |
-| BCrypt | `SecurityConfig.passwordEncoder`, `UserService.create` |
-| JWT login, token claims, validation, `401` | `AuthController`, `AuthService`, `JwtService`, `JsonSecurityHandlers` |
-| Google OAuth2, user saved, role assigned | `SecurityConfig.googleLogin`, `OAuth2LoginSuccessHandler`, `UserService.findOrCreateGoogleUser` |
+| Spring Security, custom filters, `SecurityFilterChain` | `config/SecurityConfig`, `filter/JwtAuthenticationFilter` |
+| BCrypt | `config/SecurityConfig` (`passwordEncoder`), `service/UserService` |
+| JWT login, token claims, validation, `401` | `controller/rest/AuthController`, `service/AuthService`, `service/JwtService`, `handler/JsonSecurityHandlers` |
+| Google OAuth2, user saved, role assigned | `config/SecurityConfig` (`googleLogin`), `handler/OAuth2LoginSuccessHandler`, `service/UserService` (`findOrCreateGoogleUser`) |
 | Roles and `@PreAuthorize` | `entity/Role`, all classes in `controller/` |
-| CORS | `SecurityConfig.corsConfigurationSource` |
-| CSRF explanation and demo | `SecurityConfig.csrfDemo`, `CsrfDemoController`, section 5 |
-| Hashing, blacklist, lookup maps | `TokenBlacklist`, `SecurityEvents`, section 5 |
-| Security logging and reports | `SecurityEvents`, `SecurityReportController` |
-| OpenAPI with secured and public endpoints | `OpenApiConfig` (bearer scheme), `@SecurityRequirements` on the public endpoints |
+| First ADMIN account | `config/AdminSeeder` |
+| CORS | `config/CorsConfig` |
+| CSRF explanation and demo | `config/SecurityConfig` (`csrfDemo`), `controller/rest/CsrfDemoController`, section 6 |
+| Hashing, blacklist, lookup maps | `service/TokenBlacklist`, `service/SecurityEvents`, section 6 |
+| Security logging and reports | `service/SecurityEvents`, `controller/rest/SecurityReportController` |
+| OpenAPI with secured and public endpoints | `config/OpenApiConfig` (bearer scheme), `@SecurityRequirements` on the public endpoints |
 | Postman tests | `docs/postman_collection.json` |
 
-## 9. Known limits
+## 10. Known limits
 
 - The role decides what a user may do, but there is **no ownership check**: an AUTHOR can pass any `authorId` when creating a post (as in Lab 3).
 - A token stays valid until it expires, even if the user is deleted or changes role, unless the user logs out.

@@ -13,8 +13,8 @@ PostgreSQL with Spring Data JPA, MongoDB, pagination, transactions and caching. 
 | `repository` | Spring Data interfaces. Spring writes their implementation at startup. |
 | `entity` | The classes stored in the databases. The API returns them directly. |
 | `dto` | The request bodies, with Bean Validation (`@NotBlank`, `@Email`...). |
-| `config` | OpenAPI, GraphQL and the AOP logging aspect (`ServiceMonitoring`). |
-| `security` | Lab 4: filter chains, JWT, blacklist, Google login, security events, admin seeding. |
+| `config` | OpenAPI, GraphQL, the AOP logging aspect (`ServiceMonitoring`), and the Lab 4 security, CORS and admin setup. |
+| `filter`, `handler` | Lab 4: the JWT filter, the 401/403 answers and the Google login handler. |
 
 Lombok (`@Getter`, `@Setter`, `@NoArgsConstructor`) writes the getters, setters and empty constructors of the entities.
 
