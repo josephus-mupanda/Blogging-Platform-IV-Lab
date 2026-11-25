@@ -1,5 +1,6 @@
 package com.example.Blogging_Platform_IV.entity;
 
+import com.example.Blogging_Platform_IV.enums.Role;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -27,7 +28,7 @@ public class User {
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    /** Kept private: it is never sent back in an API response. */
+    // never sent in an API response
     @JsonIgnore
     @Column(nullable = false, unique = true)
     private String email;
@@ -35,12 +36,12 @@ public class User {
     @Column(nullable = false, length = 100)
     private String displayName;
 
-    /** The BCrypt hash of the password. The password itself is never stored or sent back. */
+    // the BCrypt hash, never the password itself
     @JsonIgnore
     @Column(nullable = false)
     private String password;
 
-    /** One role per user. It goes into the JWT and decides which endpoints the user can call. */
+    // one role per user, also written in the JWT
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role;

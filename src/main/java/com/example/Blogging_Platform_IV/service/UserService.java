@@ -2,8 +2,8 @@ package com.example.Blogging_Platform_IV.service;
 
 import com.example.Blogging_Platform_IV.entity.Comment;
 import com.example.Blogging_Platform_IV.entity.Review;
-import com.example.Blogging_Platform_IV.entity.Role;
 import com.example.Blogging_Platform_IV.entity.User;
+import com.example.Blogging_Platform_IV.enums.Role;
 import com.example.Blogging_Platform_IV.exception.BlogException;
 import com.example.Blogging_Platform_IV.repository.CommentRepository;
 import com.example.Blogging_Platform_IV.repository.PostRepository;
@@ -11,7 +11,6 @@ import com.example.Blogging_Platform_IV.repository.ReviewRepository;
 import com.example.Blogging_Platform_IV.repository.UserRepository;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -21,10 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * rollbackFor = Exception.class: by default Spring only rolls back for RuntimeException.
- * With this, any exception thrown by the method undoes all of its database changes.
- */
+// rollbackFor = Exception.class: roll back for any exception, not only RuntimeException.
 @Service
 public class UserService {
     private final UserRepository users;
@@ -46,28 +42,41 @@ public class UserService {
         return users.findAll(Sort.by("username"));
     }
 
-    /** Cached: the first call reads the database, the next calls read the "users" cache. */
+    // Cached: the first call reads the database, the next calls read the "users" cache.
     @Cacheable(value = "users", key = "#id")
     public User get(Long id) {
         return users.findById(id).orElseThrow(() -> BlogException.notFound("User"));
     }
 
-    /** The password is hashed with BCrypt here, so only the hash reaches the database. No role means READER. */
+    public User getByUsername(String username) {
+        return users.findByUsername(username).orElseThrow(() -> BlogException.notFound("User"));
+    }
+
+    // The password is hashed with BCrypt before it is saved. No role means READER.
     @Transactional(rollbackFor = Exception.class)
     public User create(String username, String email, String displayName, String password, Role role) {
         return users.save(new User(username, email, displayName, passwordEncoder.encode(password),
                 role == null ? Role.READER : role));
     }
 
-    /**
-     * Keeps every cached or copied value of this user up to date:
-     * - @CachePut puts the new user in the "users" cache.
-     * - @CacheEvict empties the "posts" cache, because each cached post contains its author.
-     *   Without it, a post would still show the old display name.
-     * - The comments and reviews in MongoDB keep a copy of the name, so they are updated too.
-     * saveAndFlush runs the UPDATE first: if it fails (email already used), the method stops
-     * before MongoDB is touched, the transaction is rolled back and nothing is cached.
-     */
+    // Google login: use the account with this email, or create a READER account.
+    @Transactional(rollbackFor = Exception.class)
+    public User findOrCreateGoogleUser(String email, String name) {
+        return users.findByEmail(email).orElseGet(() -> {
+            String username = email.substring(0, email.indexOf('@'));
+            while (users.existsByUsername(username)) {
+                username = username + "1";   // the name is already taken
+            }
+            String displayName = name == null ? username : name;
+            // A Google user has no password here, so the account gets a random one nobody knows.
+            String password = passwordEncoder.encode(UUID.randomUUID().toString());
+            return users.save(new User(username, email, displayName, password, Role.READER));
+        });
+    }
+
+    // @CachePut replaces the user in the cache. @CacheEvict empties the posts cache, because a cached
+    // post contains its author. The name copied in the MongoDB comments and reviews is updated too.
+    // saveAndFlush runs the UPDATE first, so if it fails MongoDB is not touched.
     @Transactional(rollbackFor = Exception.class)
     @Caching(put = @CachePut(value = "users", key = "#id"),
             evict = @CacheEvict(value = "posts", allEntries = true))
@@ -88,11 +97,8 @@ public class UserService {
         return saved;
     }
 
-    /**
-     * A user who still has posts cannot be deleted (409). Otherwise the user is deleted in
-     * PostgreSQL first (flush runs the DELETE now), and only then are their comments and reviews
-     * deleted in MongoDB. If the PostgreSQL delete fails, MongoDB is never touched.
-     */
+    // A user with posts cannot be deleted (409). PostgreSQL first (flush runs the DELETE now),
+    // then the comments and reviews in MongoDB.
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = "users", key = "#id")
     public void delete(Long id) {
@@ -104,43 +110,6 @@ public class UserService {
         users.flush();
         comments.deleteByAuthorId(id);
         reviews.deleteByReviewerId(id);
-    }
-
-    /**
-     * Google login: the account is found by its email. A person who logs in with Google for the first
-     * time gets a new account with the READER role (assigned automatically), their Google name as
-     * display name and a username made from the start of their email address. A Google account has no
-     * password here, so the account gets a long random one that nobody knows (BCrypt-hashed as usual).
-     * An existing account with the same email is reused as it is, with the role it already has.
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public User findOrCreateGoogleUser(String email, String name) {
-        return users.findByEmail(email).orElseGet(() -> {
-            String username = freeUsername(email);
-            String displayName = name == null || name.isBlank() ? username : name.trim();
-            if (displayName.length() > 100) {
-                displayName = displayName.substring(0, 100);
-            }
-            String unusablePassword = UUID.randomUUID() + UUID.randomUUID().toString();
-            return users.save(new User(username, email, displayName,
-                    passwordEncoder.encode(unusablePassword), Role.READER));
-        });
-    }
-
-    /** "jane.doe@gmail.com" gives "jane.doe", or "jane.doe4821" when that name is already taken. */
-    private String freeUsername(String email) {
-        String base = email.substring(0, email.indexOf('@')).replaceAll("[^A-Za-z0-9._-]", "");
-        if (base.length() > 40) {
-            base = base.substring(0, 40);
-        }
-        if (base.length() < 3) {
-            base = base + "user";
-        }
-        String candidate = base;
-        while (users.existsByUsername(candidate)) {
-            candidate = base + ThreadLocalRandom.current().nextInt(1000, 10000);
-        }
-        return candidate;
     }
 
     public boolean usernameExists(String username) {

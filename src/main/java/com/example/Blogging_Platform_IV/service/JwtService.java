@@ -1,6 +1,6 @@
 package com.example.Blogging_Platform_IV.service;
 
-import com.example.Blogging_Platform_IV.entity.Role;
+import com.example.Blogging_Platform_IV.enums.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -14,19 +14,7 @@ import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-/**
- * Creates and checks the JSON Web Tokens.
- *
- * A JWT has three parts separated by dots: header.payload.signature. The payload carries the claims:
- *   sub   the username
- *   roles the role of the user, for example ["AUTHOR"]
- *   iat   when the token was issued
- *   exp   when it stops being valid
- *   jti   a unique id for the token
- * The signature is an HMAC SHA-256 of header.payload made with a secret key that only the server
- * knows. Anyone can read the payload (it is only Base64 encoded), but nobody can change it without
- * the signature check failing.
- */
+// Creates and checks the JWTs. The token is signed with HMAC SHA-256 and a secret key.
 @Service
 public class JwtService {
     private final SecretKey key;
@@ -34,11 +22,11 @@ public class JwtService {
 
     public JwtService(@Value("${app.jwt.secret}") String secret,
                       @Value("${app.jwt.expiration-minutes}") long expirationMinutes) {
-        // HS256 needs a key of at least 256 bits, which is 32 characters here.
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));   // at least 32 characters
         this.lifetime = Duration.ofMinutes(expirationMinutes);
     }
 
+    // Claims: id, subject (username), roles, issued at, expiry.
     public String generate(String username, Role role) {
         Instant now = Instant.now();
         return Jwts.builder()
@@ -51,11 +39,8 @@ public class JwtService {
                 .compact();
     }
 
-    /**
-     * Checks the signature and the expiry date, then returns the claims.
-     * Throws a JwtException when the token is tampered with, malformed, unsigned or expired
-     * (ExpiredJwtException), and the caller turns that into a 401.
-     */
+    // Checks the signature and the expiry, then returns the claims.
+    // Throws a JwtException if the token is changed, malformed or expired.
     public Claims parse(String token) {
         return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
     }

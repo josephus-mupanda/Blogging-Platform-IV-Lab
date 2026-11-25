@@ -1,24 +1,17 @@
 package com.example.Blogging_Platform_IV.config;
 
-import com.example.Blogging_Platform_IV.entity.Role;
+import com.example.Blogging_Platform_IV.enums.Role;
 import com.example.Blogging_Platform_IV.repository.UserRepository;
 import com.example.Blogging_Platform_IV.service.UserService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
-/**
- * Registration can only create AUTHOR and READER accounts, so the first ADMIN has to come from
- * somewhere else: this class creates it at startup from the app.admin.* properties.
- * It does nothing when that account already exists.
- */
+// Registration cannot create an ADMIN, so the first one is created when the app starts
+// (values in application.properties). Nothing happens if it already exists.
 @Component
 public class AdminSeeder implements ApplicationRunner {
-    private static final Logger LOG = LoggerFactory.getLogger(AdminSeeder.class);
-
     private final UserService userService;
     private final UserRepository users;
     private final String username;
@@ -38,10 +31,8 @@ public class AdminSeeder implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (users.existsByUsername(username) || users.existsByEmail(email)) {
-            return;
+        if (!users.existsByUsername(username) && !users.existsByEmail(email)) {
+            userService.create(username, email, "Administrator", password, Role.ADMIN);
         }
-        userService.create(username, email, "Administrator", password, Role.ADMIN);
-        LOG.info("Created the ADMIN account '{}'", username);
     }
 }

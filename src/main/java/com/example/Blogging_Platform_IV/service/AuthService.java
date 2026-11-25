@@ -2,13 +2,12 @@ package com.example.Blogging_Platform_IV.service;
 
 import com.example.Blogging_Platform_IV.dto.AuthToken;
 import com.example.Blogging_Platform_IV.dto.UserCreate;
-import com.example.Blogging_Platform_IV.entity.Role;
 import com.example.Blogging_Platform_IV.entity.User;
+import com.example.Blogging_Platform_IV.enums.Role;
 import com.example.Blogging_Platform_IV.exception.BlogException;
 import io.jsonwebtoken.Claims;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 
@@ -29,7 +28,7 @@ public class AuthService {
         this.events = events;
     }
 
-    /** Public sign-up. Anyone can become a READER or an AUTHOR, but never an ADMIN. */
+    // Anyone can register as READER or AUTHOR, but not as ADMIN.
     public User register(UserCreate input) {
         if (input.getRole() == Role.ADMIN) {
             throw BlogException.badRequest("Registration cannot create an ADMIN account.");
@@ -38,31 +37,28 @@ public class AuthService {
                 input.getPassword(), input.getRole());
     }
 
-    /**
-     * Spring Security hashes the password it received and compares it with the BCrypt hash in the
-     * database. A wrong password or an unknown username throws an AuthenticationException (401).
-     */
+    // Spring Security checks the password against the BCrypt hash. A wrong login throws an
+    // AuthenticationException, which becomes a 401.
     public AuthToken login(String username, String password, String ip) {
-        Authentication result;
         try {
-            result = authentication.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+            authentication.authenticate(new UsernamePasswordAuthenticationToken(username, password));
         } catch (AuthenticationException e) {
             events.loginFailure(username, ip);
             throw e;
         }
-        events.loginSuccess(result.getName(), ip);
-        String authority = result.getAuthorities().iterator().next().getAuthority();
-        return issueToken(result.getName(), Role.valueOf(authority.substring("ROLE_".length())));
+        events.loginSuccess(username, ip);
+        return issueToken(users.getByUsername(username));
     }
 
-    /** Puts the token on the blacklist until it expires, so the server refuses it from now on. */
+    // The token goes on the blacklist until it expires.
     public void logout(String token) {
         Claims claims = jwt.parse(token);
         blacklist.revoke(token, claims.getExpiration().toInstant());
         events.tokenRevoked(claims.getSubject());
     }
 
-    public AuthToken issueToken(String username, Role role) {
-        return new AuthToken(jwt.generate(username, role), "Bearer", jwt.lifetimeSeconds(), username, role);
+    public AuthToken issueToken(User user) {
+        String token = jwt.generate(user.getUsername(), user.getRole());
+        return new AuthToken(token, "Bearer", jwt.lifetimeSeconds(), user.getUsername(), user.getRole());
     }
 }
