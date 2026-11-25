@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="472" viewBox="0 0 920 472" role="img">
+<title>How a token is obtained and revoked</title>
+<defs><marker id="arrow-4b5563" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4b5563"/></marker><marker id="arrow-d64545" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d64545"/></marker></defs>
+<rect width="920" height="472" fill="#ffffff"/>
+<text x="24" y="30" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#1f2937">A. Username and password</text>
+<rect x="20" y="50" width="280" height="62" rx="10" fill="#e8f1ff" stroke="#3b6fd4" stroke-width="1.6"/>
+<text x="34" y="73" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">POST /auth/login</text>
+<text x="34" y="93" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">username + password (public endpoint)</text>
+<line x1="160" y1="112" x2="160" y2="134" stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow-4b5563)"/>
+<rect x="20" y="134" width="280" height="62" rx="10" fill="#e8f1ff" stroke="#3b6fd4" stroke-width="1.6"/>
+<text x="34" y="157" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">UserDetailsService</text>
+<text x="34" y="177" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">loads the user from PostgreSQL</text>
+<line x1="160" y1="196" x2="160" y2="218" stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow-4b5563)"/>
+<rect x="20" y="218" width="280" height="62" rx="10" fill="#e8f1ff" stroke="#3b6fd4" stroke-width="1.6"/>
+<text x="34" y="241" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">BCryptPasswordEncoder</text>
+<text x="34" y="261" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">compares the password with the stored hash</text>
+<line x1="160" y1="280" x2="160" y2="302" stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow-4b5563)"/>
+<rect x="20" y="302" width="280" height="62" rx="10" fill="#e8f1ff" stroke="#3b6fd4" stroke-width="1.6"/>
+<text x="34" y="325" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">JwtService</text>
+<text x="34" y="345" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">signs the JWT (HS256): sub, roles, iat, exp</text>
+<line x1="160" y1="364" x2="160" y2="386" stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow-4b5563)"/>
+<rect x="20" y="386" width="280" height="62" rx="10" fill="#e8f1ff" stroke="#3b6fd4" stroke-width="1.6"/>
+<text x="34" y="409" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">Token returned</text>
+<text x="34" y="429" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">send it as Authorization: Bearer &lt;token&gt;</text>
+<text x="324" y="30" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#1f2937">B. Google login</text>
+<rect x="320" y="50" width="280" height="62" rx="10" fill="#e6f7ec" stroke="#2e8b57" stroke-width="1.6"/>
+<text x="334" y="73" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">Browser opens</text>
+<text x="334" y="93" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">/oauth2/authorization/google</text>
+<line x1="460" y1="112" x2="460" y2="134" stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow-4b5563)"/>
+<rect x="320" y="134" width="280" height="62" rx="10" fill="#e6f7ec" stroke="#2e8b57" stroke-width="1.6"/>
+<text x="334" y="157" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">Google sign-in</text>
+<text x="334" y="177" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">the user accepts, Google calls back with a code</text>
+<line x1="460" y1="196" x2="460" y2="218" stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow-4b5563)"/>
+<rect x="320" y="218" width="280" height="62" rx="10" fill="#e6f7ec" stroke="#2e8b57" stroke-width="1.6"/>
+<text x="334" y="241" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">Spring Security OAuth2 Client</text>
+<text x="334" y="261" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">trades the code, reads the Google profile</text>
+<line x1="460" y1="280" x2="460" y2="302" stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow-4b5563)"/>
+<rect x="320" y="302" width="280" height="62" rx="10" fill="#e6f7ec" stroke="#2e8b57" stroke-width="1.6"/>
+<text x="334" y="325" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">Find or create the user</text>
+<text x="334" y="345" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">a new user is saved as READER in PostgreSQL</text>
+<line x1="460" y1="364" x2="460" y2="386" stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow-4b5563)"/>
+<rect x="320" y="386" width="280" height="62" rx="10" fill="#e6f7ec" stroke="#2e8b57" stroke-width="1.6"/>
+<text x="334" y="409" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">Same JWT returned</text>
+<text x="334" y="429" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">works exactly like a normal login</text>
+<text x="624" y="30" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#1f2937">C. Logout (revoke a token)</text>
+<rect x="620" y="50" width="280" height="62" rx="10" fill="#fff3e0" stroke="#d98a1c" stroke-width="1.6"/>
+<text x="634" y="73" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">POST /auth/logout</text>
+<text x="634" y="93" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">with the Bearer token</text>
+<line x1="760" y1="112" x2="760" y2="134" stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow-4b5563)"/>
+<rect x="620" y="134" width="280" height="62" rx="10" fill="#fff3e0" stroke="#d98a1c" stroke-width="1.6"/>
+<text x="634" y="157" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">SHA-256 of the token</text>
+<text x="634" y="177" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">so no usable token is stored</text>
+<line x1="760" y1="196" x2="760" y2="218" stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow-4b5563)"/>
+<rect x="620" y="218" width="280" height="62" rx="10" fill="#fff3e0" stroke="#d98a1c" stroke-width="1.6"/>
+<text x="634" y="241" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">Blacklist: ConcurrentHashMap</text>
+<text x="634" y="261" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">hash -&gt; expiry date, removed once expired</text>
+<line x1="760" y1="280" x2="760" y2="302" stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow-4b5563)"/>
+<rect x="620" y="302" width="280" height="62" rx="10" fill="#fff3e0" stroke="#d98a1c" stroke-width="1.6"/>
+<text x="634" y="325" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">Next request, same token</text>
+<text x="634" y="345" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">JwtAuthenticationFilter finds it in the map</text>
+<line x1="760" y1="364" x2="760" y2="386" stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow-4b5563)"/>
+<rect x="620" y="386" width="280" height="62" rx="10" fill="#fdeaea" stroke="#d64545" stroke-width="1.6"/>
+<text x="634" y="409" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">401 token revoked</text>
+<text x="634" y="429" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">and the event is written to the log</text>
+</svg>
