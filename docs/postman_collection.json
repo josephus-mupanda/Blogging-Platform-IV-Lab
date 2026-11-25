@@ -112,6 +112,10 @@
     {
       "key": "csrfCheckTagId",
       "value": ""
+    },
+    {
+      "key": "postTitle",
+      "value": ""
     }
   ],
   "item": [
@@ -148,7 +152,7 @@
                   "const b64 = s => JSON.parse(atob(s.replace(/-/g, '+').replace(/_/g, '/')));",
                   "const token = pm.response.json().data.token;",
                   "pm.collectionVariables.set('adminToken', token);",
-                  "const [header, payload] = token.split('.').map(b64);",
+                  "const [header, payload] = token.split('.').slice(0, 2).map(b64);",
                   "pm.test('Header says HMAC SHA-256 (HS256)', () => pm.expect(header.alg).to.eql('HS256'));",
                   "pm.test('Claims: subject, roles, issued-at, expiry', () => {",
                   "  pm.expect(payload.sub).to.eql('admin');",
@@ -640,6 +644,15 @@
           "name": "Create post",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('postTitle', 'Spring Data JPA ' + Date.now());"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
@@ -676,7 +689,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Spring Data JPA {{$timestamp}}\",\n  \"body\": \"Repositories make data access simple.\",\n  \"tagIds\": [{{tagId}}]\n}"
+              "raw": "{\n  \"title\": \"{{postTitle}}\",\n  \"body\": \"Repositories make data access simple.\",\n  \"tagIds\": [{{tagId}}]\n}"
             },
             "description": "Expect 201. The response shows the author and the tags."
           }
@@ -753,8 +766,9 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Same title\",\n  \"body\": \"Send this request twice: the second time the unique title is refused.\"\n}"
-            }
+              "raw": "{\n  \"title\": \"{{postTitle}}\",\n  \"body\": \"Same title as the post above: the unique title is refused.\"\n}"
+            },
+            "description": "Expect 409. The title of a post is unique, so the second post with the same title is refused and rolled back."
           },
           "event": [
             {
