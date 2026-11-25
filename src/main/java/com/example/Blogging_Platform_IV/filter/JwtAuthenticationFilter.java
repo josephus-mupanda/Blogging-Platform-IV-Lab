@@ -1,5 +1,9 @@
-package com.example.Blogging_Platform_IV.security;
+package com.example.Blogging_Platform_IV.filter;
 
+import com.example.Blogging_Platform_IV.handler.JsonSecurityHandlers;
+import com.example.Blogging_Platform_IV.service.JwtService;
+import com.example.Blogging_Platform_IV.service.SecurityEvents;
+import com.example.Blogging_Platform_IV.service.TokenBlacklist;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -26,7 +30,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     /** The reason a token was refused, read by JsonSecurityHandlers to write the 401 message. */
-    static final String TOKEN_ERROR = "jwt.error";
+    public static final String TOKEN_ERROR = "jwt.error";
 
     private final JwtService jwt;
     private final TokenBlacklist blacklist;

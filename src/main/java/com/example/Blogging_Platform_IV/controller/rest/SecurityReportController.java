@@ -2,8 +2,8 @@ package com.example.Blogging_Platform_IV.controller.rest;
 
 import static com.example.Blogging_Platform_IV.controller.rest.ApiResponse.ok;
 
-import com.example.Blogging_Platform_IV.security.SecurityEvents;
-import com.example.Blogging_Platform_IV.security.TokenBlacklist;
+import com.example.Blogging_Platform_IV.service.SecurityEvents;
+import com.example.Blogging_Platform_IV.service.TokenBlacklist;
 import io.swagger.v3.oas.annotations.Operation;
 import java.util.Map;
 import org.springframework.security.access.prepost.PreAuthorize;

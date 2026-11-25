@@ -1,4 +1,4 @@
-package com.example.Blogging_Platform_IV.security;
+package com.example.Blogging_Platform_IV.service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

@@ -1,7 +1,7 @@
 package com.example.Blogging_Platform_IV.controller.rest;
 
 import com.example.Blogging_Platform_IV.exception.BlogException;
-import com.example.Blogging_Platform_IV.security.SecurityEvents;
+import com.example.Blogging_Platform_IV.service.SecurityEvents;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
 import java.util.Map;

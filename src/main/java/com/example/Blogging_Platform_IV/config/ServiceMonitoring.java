@@ -17,7 +17,10 @@ import org.springframework.stereotype.Component;
 @Order(0)
 public class ServiceMonitoring {
     private static final Logger LOG = LoggerFactory.getLogger(ServiceMonitoring.class);
-    private static final String SERVICES = "execution(public * com.example.Blogging_Platform_IV.service.*Service.*(..))";
+    // The business services. JwtService and AccountUserDetailsService run on every request, so they are left out.
+    private static final String SERVICES = "execution(public * com.example.Blogging_Platform_IV.service.*Service.*(..))"
+            + " && !within(com.example.Blogging_Platform_IV.service.JwtService)"
+            + " && !within(com.example.Blogging_Platform_IV.service.AccountUserDetailsService)";
 
     @Before(SERVICES)
     public void entering(JoinPoint call) {

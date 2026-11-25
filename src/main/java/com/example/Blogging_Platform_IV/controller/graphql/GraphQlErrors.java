@@ -1,7 +1,7 @@
 package com.example.Blogging_Platform_IV.controller.graphql;
 
 import com.example.Blogging_Platform_IV.exception.BlogException;
-import com.example.Blogging_Platform_IV.security.SecurityEvents;
+import com.example.Blogging_Platform_IV.service.SecurityEvents;
 import graphql.GraphQLError;
 import graphql.GraphqlErrorBuilder;
 import graphql.schema.DataFetchingEnvironment;
@@ -11,11 +11,11 @@ import java.util.stream.Collectors;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.graphql.data.method.annotation.GraphQlExceptionHandler;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.transaction.TransactionException;
-import org.springframework.graphql.data.method.annotation.GraphQlExceptionHandler;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.TransactionException;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 

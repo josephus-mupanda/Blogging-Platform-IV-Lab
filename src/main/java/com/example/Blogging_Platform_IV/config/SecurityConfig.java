@@ -1,7 +1,12 @@
-package com.example.Blogging_Platform_IV.security;
+package com.example.Blogging_Platform_IV.config;
 
-import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
+import com.example.Blogging_Platform_IV.filter.JwtAuthenticationFilter;
+import com.example.Blogging_Platform_IV.handler.JsonSecurityHandlers;
+import com.example.Blogging_Platform_IV.handler.OAuth2LoginSuccessHandler;
+import com.example.Blogging_Platform_IV.service.AccountUserDetailsService;
+import com.example.Blogging_Platform_IV.service.JwtService;
+import com.example.Blogging_Platform_IV.service.SecurityEvents;
+import com.example.Blogging_Platform_IV.service.TokenBlacklist;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -18,9 +23,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
  * Three filter chains. Spring Security uses the first one whose securityMatcher fits the request,
@@ -48,27 +50,6 @@ public class SecurityConfig {
     @Bean
     AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
-    }
-
-    /**
-     * CORS (Cross-Origin Resource Sharing): a browser page served from one origin (for example a React
-     * app on http://localhost:3000) may only call this API if the API says that origin is allowed.
-     * Only the origins, methods and headers listed here are accepted. A request from any other origin
-     * is refused with 403 "Invalid CORS request". Postman and curl send no Origin header, so CORS
-     * does not apply to them: CORS is a browser rule, it does not replace authentication.
-     */
-    @Bean
-    CorsConfigurationSource corsConfigurationSource(@Value("${app.cors.allowed-origins}") List<String> origins) {
-        CorsConfiguration cors = new CorsConfiguration();
-        cors.setAllowedOrigins(origins);
-        cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-        // The token travels in the Authorization header, so no cookies are needed.
-        cors.setAllowCredentials(false);
-        cors.setMaxAge(3600L);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", cors);
-        return source;
     }
 
     /**
@@ -126,6 +107,7 @@ public class SecurityConfig {
     SecurityFilterChain api(HttpSecurity http, JwtService jwt, TokenBlacklist blacklist, SecurityEvents events,
                             JsonSecurityHandlers handlers) throws Exception {
         return http
+                // uses the CorsConfigurationSource bean of CorsConfig
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sessions -> sessions.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

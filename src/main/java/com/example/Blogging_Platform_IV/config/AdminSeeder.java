@@ -1,4 +1,4 @@
-package com.example.Blogging_Platform_IV.security;
+package com.example.Blogging_Platform_IV.config;
 
 import com.example.Blogging_Platform_IV.entity.Role;
 import com.example.Blogging_Platform_IV.repository.UserRepository;

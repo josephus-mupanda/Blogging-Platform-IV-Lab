@@ -1,9 +1,10 @@
-package com.example.Blogging_Platform_IV.security;
+package com.example.Blogging_Platform_IV.handler;
 
 import com.example.Blogging_Platform_IV.controller.rest.ApiResponse;
 import com.example.Blogging_Platform_IV.dto.AuthToken;
 import com.example.Blogging_Platform_IV.entity.User;
 import com.example.Blogging_Platform_IV.service.AuthService;
+import com.example.Blogging_Platform_IV.service.SecurityEvents;
 import com.example.Blogging_Platform_IV.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;

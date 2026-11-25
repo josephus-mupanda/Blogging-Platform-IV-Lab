@@ -1,4 +1,4 @@
-package com.example.Blogging_Platform_IV.security;
+package com.example.Blogging_Platform_IV.service;
 
 import com.example.Blogging_Platform_IV.entity.Role;
 import io.jsonwebtoken.Claims;
