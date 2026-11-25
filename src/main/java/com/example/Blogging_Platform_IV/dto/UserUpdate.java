@@ -4,7 +4,9 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
 
+@Getter
 public class UserUpdate {
     @NotBlank
     @Email
@@ -16,16 +18,8 @@ public class UserUpdate {
     @Size(max = 100)
     private String displayName;
 
-    public String getEmail() {
-        return email;
-    }
-
     public void setEmail(String email) {
         this.email = email == null ? null : email.trim();
-    }
-
-    public String getDisplayName() {
-        return displayName;
     }
 
     public void setDisplayName(String displayName) {

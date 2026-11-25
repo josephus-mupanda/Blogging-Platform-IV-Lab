@@ -1,6 +1,9 @@
 package com.example.Blogging_Platform_IV.exception;
 
+import lombok.Getter;
+
 /** One exception for the business rules, with a code the controllers turn into a status. */
+@Getter
 public class BlogException extends RuntimeException {
     public enum Code { BAD_REQUEST, NOT_FOUND, CONFLICT }
 
@@ -9,10 +12,6 @@ public class BlogException extends RuntimeException {
     private BlogException(Code code, String message) {
         super(message);
         this.code = code;
-    }
-
-    public Code getCode() {
-        return code;
     }
 
     public static BlogException badRequest(String message) {
