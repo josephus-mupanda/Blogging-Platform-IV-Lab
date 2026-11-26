@@ -37,7 +37,7 @@ public class GraphQlErrors {
     GraphQLError forbidden(AccessDeniedException exception, DataFetchingEnvironment environment) {
         events.accessDenied(SecurityContextHolder.getContext().getAuthentication().getName(),
                 "graphql:" + environment.getExecutionStepInfo().getPath());
-        return error(environment, "FORBIDDEN", "Your role is not allowed to do this.");
+        return error(environment, "FORBIDDEN", "Not allowed: wrong role, or this belongs to another user.");
     }
 
     // Errors that make a transaction fail: Spring has already rolled the transaction back.

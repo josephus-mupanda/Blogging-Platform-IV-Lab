@@ -34,19 +34,19 @@ public class PostGraphQlController {
         return posts.get(id);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR')")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('AUTHOR') and @ownership.isUser(#authorId, authentication.name))")
     @MutationMapping
     public Post createPost(@Argument Long authorId, @Argument @Valid PostInput input) {
         return posts.create(authorId, input.getTitle(), input.getBody(), input.getTagIds());
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR')")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('AUTHOR') and @ownership.isPostOwner(#id, authentication.name))")
     @MutationMapping
     public Post updatePost(@Argument Long id, @Argument @Valid PostInput input) {
         return posts.update(id, input.getTitle(), input.getBody(), input.getTagIds());
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('AUTHOR') and @ownership.isPostOwner(#id, authentication.name))")
     @MutationMapping
     public boolean deletePost(@Argument Long id) {
         posts.delete(id);

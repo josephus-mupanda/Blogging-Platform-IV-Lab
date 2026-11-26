@@ -52,7 +52,7 @@ public class DiscussionController {
         return ok("Comment found.", discussion.comment(postId, id));
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
+    @PreAuthorize("hasRole('ADMIN') or @ownership.isUser(#authorId, authentication.name)")
     @PostMapping("/comments")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<Comment> createComment(@PathVariable Long postId, @RequestParam Long authorId,
@@ -60,14 +60,14 @@ public class DiscussionController {
         return ok("Comment created.", discussion.addComment(postId, authorId, input.getBody()));
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
+    @PreAuthorize("hasRole('ADMIN') or @ownership.isCommentOwner(#id, authentication.name)")
     @PutMapping("/comments/{id}")
     public ApiResponse<Comment> updateComment(@PathVariable Long postId, @PathVariable String id,
                                        @Valid @RequestBody CommentInput input) {
         return ok("Comment updated.", discussion.editComment(postId, id, input.getBody()));
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
+    @PreAuthorize("hasRole('ADMIN') or @ownership.isCommentOwner(#id, authentication.name)")
     @DeleteMapping("/comments/{id}")
     public ApiResponse<Void> deleteComment(@PathVariable Long postId, @PathVariable String id) {
         discussion.deleteComment(postId, id);
@@ -80,7 +80,7 @@ public class DiscussionController {
         return ok("Reviews found.", discussion.reviews(postId));
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
+    @PreAuthorize("hasRole('ADMIN') or @ownership.isUser(#reviewerId, authentication.name)")
     @PostMapping("/reviews")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<Review> createReview(@PathVariable Long postId, @RequestParam Long reviewerId,

@@ -48,7 +48,7 @@ public class JsonSecurityHandlers implements AuthenticationEntryPoint, AccessDen
                        AccessDeniedException exception) throws IOException {
         String username = request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : "unknown";
         events.accessDenied(username, request.getRequestURI());
-        write(response, HttpStatus.FORBIDDEN, "Your role is not allowed to do this.");
+        write(response, HttpStatus.FORBIDDEN, "Not allowed: wrong role, or this belongs to another user.");
     }
 
     public void write(HttpServletResponse response, HttpStatus status, String message) throws IOException {

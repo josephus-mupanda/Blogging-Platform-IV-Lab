@@ -55,7 +55,7 @@ public class ApiErrors {
     public ResponseEntity<ApiResponse<Void>> forbidden(AccessDeniedException exception, HttpServletRequest request) {
         events.accessDenied(SecurityContextHolder.getContext().getAuthentication().getName(), request.getRequestURI());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ApiResponse.error("Your role is not allowed to do this.", null));
+                .body(ApiResponse.error("Not allowed: wrong role, or this belongs to another user.", null));
     }
 
     /** Wrong password or unknown username at /auth/login. The message does not say which one was wrong. */

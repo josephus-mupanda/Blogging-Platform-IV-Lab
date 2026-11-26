@@ -73,20 +73,20 @@ public class PostController {
         return ok("Post found.", posts.get(id));
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR')")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('AUTHOR') and @ownership.isUser(#authorId, authentication.name))")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<Post> create(@RequestParam Long authorId, @Valid @RequestBody PostInput input) {
         return ok("Post created.", posts.create(authorId, input.getTitle(), input.getBody(), input.getTagIds()));
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR')")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('AUTHOR') and @ownership.isPostOwner(#id, authentication.name))")
     @PutMapping("/{id}")
     public ApiResponse<Post> update(@PathVariable Long id, @Valid @RequestBody PostInput input) {
         return ok("Post updated.", posts.update(id, input.getTitle(), input.getBody(), input.getTagIds()));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('AUTHOR') and @ownership.isPostOwner(#id, authentication.name))")
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         posts.delete(id);

@@ -43,26 +43,26 @@ public class DiscussionGraphQlController {
         return discussion.reviews(postId);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
+    @PreAuthorize("hasRole('ADMIN') or @ownership.isUser(#authorId, authentication.name)")
     @MutationMapping
     public Comment addComment(@Argument Long postId, @Argument Long authorId, @Argument @Valid CommentInput input) {
         return discussion.addComment(postId, authorId, input.getBody());
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
+    @PreAuthorize("hasRole('ADMIN') or @ownership.isCommentOwner(#id, authentication.name)")
     @MutationMapping
     public Comment updateComment(@Argument Long postId, @Argument String id, @Argument @Valid CommentInput input) {
         return discussion.editComment(postId, id, input.getBody());
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
+    @PreAuthorize("hasRole('ADMIN') or @ownership.isCommentOwner(#id, authentication.name)")
     @MutationMapping
     public boolean deleteComment(@Argument Long postId, @Argument String id) {
         discussion.deleteComment(postId, id);
         return true;
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR', 'READER')")
+    @PreAuthorize("hasRole('ADMIN') or @ownership.isUser(#reviewerId, authentication.name)")
     @MutationMapping
     public Review addReview(@Argument Long postId, @Argument Long reviewerId, @Argument @Valid ReviewInput input) {
         return discussion.addReview(postId, reviewerId, input.getRating(), input.getText());
