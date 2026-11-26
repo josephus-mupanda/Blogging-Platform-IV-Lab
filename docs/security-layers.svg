@@ -38,12 +38,12 @@
 <text x="574" y="496" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#9b1c1c">401 no token, not logged in</text>
 <rect x="30" y="560" width="470" height="78" rx="10" fill="#e8f1ff" stroke="#3b6fd4" stroke-width="1.6"/>
 <text x="44" y="583" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">5. @PreAuthorize on the controller method</text>
-<text x="44" y="603" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">Is the role in the token allowed? ADMIN, AUTHOR or READER</text>
+<text x="44" y="603" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">Is the role allowed? Does the post or comment belong to the user?</text>
 <text x="44" y="620" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">(same rules for REST and GraphQL)</text>
 <line x1="265" y1="638" x2="265" y2="668" stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow-4b5563)"/>
 <line x1="500" y1="599" x2="560" y2="599" stroke="#d64545" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arrow-d64545)"/>
 <rect x="562" y="579" width="250" height="40" rx="8" fill="#fdeaea" stroke="#d64545" stroke-width="1.6"/>
-<text x="574" y="604" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#9b1c1c">403 role not allowed</text>
+<text x="574" y="604" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#9b1c1c">403 wrong role or not yours</text>
 <rect x="30" y="668" width="470" height="78" rx="10" fill="#e6f7ec" stroke="#2e8b57" stroke-width="1.6"/>
 <text x="44" y="691" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">6. Controller, Service, Database</text>
 <text x="44" y="711" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">PostgreSQL: users, posts, tags | MongoDB: comments, reviews</text>

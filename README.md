@@ -23,7 +23,7 @@ In plain words:
 2. **Filter chain**: Spring picks the rules by URL. The API (everything except the two special cases below) has **no session and no CSRF**, because the token is sent in a header each time.
 3. **JwtAuthenticationFilter** (our own filter): reads `Authorization: Bearer <token>`, checks the signature and the expiry date, and checks that the token was not logged out.
 4. **Access rules**: login, registration and Swagger are public. Everything else needs a valid token.
-5. **`@PreAuthorize`**: checks the role. `401` means "who are you?", `403` means "you are not allowed".
+5. **`@PreAuthorize`**: checks the role, and for posts and comments that they **belong to the user**. `401` means "who are you?", `403` means "you are not allowed".
 6. The controller runs.
 
 ### Three filter chains (`config/SecurityConfig`)
@@ -101,14 +101,36 @@ Without these two values the app still starts, and only the Google login fails.
 | Register, log in, Swagger | yes | yes | yes | **yes** |
 | Read posts, tags, comments, reviews | yes | yes | yes | 401 |
 | Add comments and reviews | yes | yes | yes | 401 |
-| Create and update posts and tags | yes | yes | 403 | 401 |
-| Delete posts and tags | yes | 403 | 403 | 401 |
+| Create posts (in your own name) | yes | yes | 403 | 401 |
+| Edit or delete **your own** post | yes | yes | 403 | 401 |
+| Edit or delete **someone else's** post | yes | 403 | 403 | 401 |
+| Edit or delete **your own** comment | yes | yes | yes | 401 |
+| Edit or delete **someone else's** comment | yes | 403 | 403 | 401 |
+| Create a post, comment or review **in another user's name** | yes | 403 | 403 | 401 |
+| Create and rename tags (shared, no owner) | yes | yes | 403 | 401 |
+| Delete tags | yes | 403 | 403 | 401 |
 | Manage users (`/api/users`) | yes | 403 | 403 | 401 |
 | Dashboard and security report | yes | 403 | 403 | 401 |
 
 - Registration (`POST /auth/register`) creates a `READER` (or an `AUTHOR` if asked). It refuses `ADMIN`. An admin can create other admins with `POST /api/users`.
 - A user who logs in with Google for the first time is saved as `READER` automatically.
 - The rule is written above each controller method, for example `@PreAuthorize("hasRole('ADMIN')")`. REST and GraphQL use the same rules.
+
+### Ownership: you can only change what is yours
+The role is not enough: two authors must not be able to edit or delete each other's posts. So for posts, comments and reviews the same `@PreAuthorize` also checks the owner, with a small class `service/OwnershipChecker`:
+
+```java
+// PostController: only an ADMIN, or the AUTHOR who wrote the post
+@PreAuthorize("hasRole('ADMIN') or (hasRole('AUTHOR') and @ownership.isPostOwner(#id, authentication.name))")
+public ApiResponse<Void> delete(@PathVariable Long id) { ... }
+```
+
+- `authentication.name` is the username in the token. `#id` is the id in the URL.
+- `isPostOwner` compares it with the author of the post. `isCommentOwner` does the same for a comment (stored in MongoDB).
+- `isUser(#authorId, ...)` stops someone from creating a post, comment or review **in the name of another user** (`?authorId=...`).
+- An **ADMIN** can do everything, to moderate.
+- If the post or comment does not exist, the check lets the call through and the service answers `404`, not `403`.
+- Tags have no owner (they are labels shared by many posts), so only the role counts: AUTHOR creates and renames, ADMIN deletes.
 
 ---
 
@@ -205,6 +227,7 @@ Import [docs/postman_collection.json](docs/postman_collection.json) and run the 
 | 0. Authentication | register AUTHOR and READER, ADMIN refused, login, JWT header and claims decoded, wrong password `401` | JWT, BCrypt |
 | 1 to 6 | the Lab 3 requests, now sent with the admin token | |
 | 7. Role checks | the role table above over REST and GraphQL: `200`, `403`, `FORBIDDEN` | RBAC |
+| 7b. Ownership checks | author 2 cannot edit or delete the post or comment of author 1 or of the reader; nobody can create in another user's name; the owner can; an ADMIN can; a missing post gives `404` | RBAC, ownership |
 | 8. Token checks | no token, tampered, expired and revoked tokens give `401`; 6 wrong passwords; the security report | JWT, blacklist, logging |
 | 9. CORS, CSRF and Google | allowed and unknown origins; form with and without the CSRF token; POST on the API needs no CSRF token; redirect to Google | CORS, CSRF, OAuth2 |
 | 10. Cleanup | deletes what the run created | |
@@ -235,6 +258,7 @@ The dev secret and the dev admin password are in this public repository: use the
 | JWT login, token claims, validation, `401` | `controller/rest/AuthController`, `service/AuthService`, `service/JwtService`, `handler/JsonSecurityHandlers` |
 | Google OAuth2, user saved, role assigned | `config/SecurityConfig` (`googleLogin`), `handler/OAuth2LoginSuccessHandler`, `service/UserService` (`findOrCreateGoogleUser`) |
 | Roles and `@PreAuthorize` | `enums/Role`, all classes in `controller/` |
+| Ownership (edit or delete only your own) | `service/OwnershipChecker`, `@PreAuthorize` in `PostController` and `DiscussionController` (and the GraphQL ones) |
 | First ADMIN account | `config/AdminSeeder` |
 | CORS | `config/CorsConfig` |
 | CSRF explanation and demo | `config/SecurityConfig` (`csrfDemo`), `controller/rest/CsrfDemoController`, section 6 |
@@ -245,7 +269,8 @@ The dev secret and the dev admin password are in this public repository: use the
 
 ## 10. Known limits
 
-- The role decides what a user may do, but there is **no ownership check**: an AUTHOR can pass any `authorId` when creating a post (as in Lab 3).
+- Tags have no owner: any AUTHOR can rename any tag. An ADMIN can edit any post or comment, on purpose.
+- The `authorId` parameter is still sent by the client, but it is refused (403) if it is not the logged-in user.
 - A token stays valid until it expires, even if the user is deleted or changes role, unless the user logs out.
 - One role per user. The blacklist and counters are in memory.
 - The server speaks plain HTTP. In production use HTTPS, because a Bearer token sent over HTTP can be read.

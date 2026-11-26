@@ -14,8 +14,9 @@
 #
 #  What each role may do (a role that is not allowed gets extensions.code = FORBIDDEN):
 #    ADMIN   everything (users, dashboard, delete posts and tags)
-#    AUTHOR  read, create and update posts and tags, add comments and reviews
-#    READER  read posts and tags, add comments and reviews
+#    AUTHOR  read, create posts and tags, edit or delete only THEIR OWN posts, add comments and reviews
+#    READER  read posts and tags, add comments and reviews, edit or delete only THEIR OWN comments
+#  authorId, reviewerId and the owner of a post or comment must be the logged-in user (an ADMIN can do all).
 #  The IDs assume user 1, tag 1 and post 1 exist. Block 1 shows the real IDs.
 # =====================================================================
 

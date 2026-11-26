@@ -70,8 +70,9 @@ Paths are inside `src/main/java/com/example/Blogging_Platform_IV/`.
 | ✅ User from Google saved in the database | `handler/OAuth2LoginSuccessHandler`, `UserService.findOrCreateGoogleUser` | After the login: `select username, email, role from users;` shows the new user. |
 | ✅ Role assigned automatically | `findOrCreateGoogleUser` creates it with `Role.READER` | The JSON answer says `"role": "READER"`. |
 | ✅ Roles ADMIN, AUTHOR, READER | `enums/Role`, column `users.role` | |
-| ✅ `@PreAuthorize` on endpoints | all REST and GraphQL controllers | Open `PostController`: `@PreAuthorize("hasAnyRole('ADMIN', 'AUTHOR')")` on create and update. |
-| ✅ Verified with Postman | folder 7 | 12 requests: 200, 201, 403 and the GraphQL `FORBIDDEN` error. |
+| ✅ `@PreAuthorize` on endpoints | all REST and GraphQL controllers | Open `PostController`: `@PreAuthorize("hasRole('ADMIN') or (hasRole('AUTHOR') and @ownership.isPostOwner(#id, authentication.name))")` on update and delete. |
+| ✅ Ownership: only the owner can edit or delete | `service/OwnershipChecker` + `@PreAuthorize` on post, comment and review endpoints | Postman folder 7b: author 2 edits the post of author 1: 403. The owner: 200. An ADMIN: 200. |
+| ✅ Verified with Postman | folders 7 and 7b | roles: 12 requests (200, 201, 403, GraphQL `FORBIDDEN`). Ownership: 18 requests. |
 
 ### Epic 5: DSA and security optimisation
 
@@ -93,7 +94,7 @@ Paths are inside `src/main/java/com/example/Blogging_Platform_IV/`.
 | Username/password with JWT and Google | ✅ |
 | `User` and `Role` | ⚠️ `User` is an entity. `Role` is an **enum** saved as text in `users.role` (section 7). |
 | OpenAPI with secured and public endpoints | ✅ `config/OpenApiConfig`, padlocks in Swagger, none on login and register |
-| GraphQL / Postman / frontend testing | ✅ Postman collection (93 checks), GraphiQL with the `Authorization` header |
+| GraphQL / Postman / frontend testing | ✅ Postman collection (112 checks), GraphiQL with the `Authorization` header |
 | README and docs | ✅ README with two pictures, `docs/` |
 
 ---
@@ -209,16 +210,24 @@ Needs `@EnableMethodSecurity`. `hasRole('ADMIN')` checks the authority `ROLE_ADM
 
 **Why is `Role` an enum and not an entity?** One role per user is enough here, an enum is simple and safe (`@Enumerated(EnumType.STRING)`). A `Role` table would be needed for several roles per user or roles created at runtime.
 
+**A user can delete the post of another user. How do you stop it?** The role is not enough, so `@PreAuthorize` also checks the owner: `@ownership.isPostOwner(#id, authentication.name)`. `OwnershipChecker` loads the post and compares its author with the username of the token. An ADMIN passes anyway. Same for comments with `isCommentOwner`.
+
+**Why not just check inside the service?** The rules for roles are already in `@PreAuthorize`, so the owner rule is in the same place, above the method. It is easy to see and it works the same for REST and GraphQL.
+
+**Why does a missing post give 404 and not 403?** If the post does not exist, `OwnershipChecker` returns true, so the call goes through and the service answers 404 "Post was not found". There is nothing to protect.
+
+**What about `?authorId=` in the URL?** Someone could write `authorId=5` to create a post in the name of user 5. `@ownership.isUser(#authorId, authentication.name)` checks that this id is the logged-in user.
+
 **How would you protect a new endpoint?** Add `@PreAuthorize("hasRole('ADMIN')")` above the method. Public URLs are only the ones listed in `SecurityConfig.api`.
 
-**How did you test?** A Postman collection with 93 checks: login and token claims, the role table over REST and GraphQL, tampered, expired and revoked tokens, brute force, CORS, CSRF, and the redirect to Google.
+**How did you test?** A Postman collection with 112 checks: login and token claims, the role table over REST and GraphQL, ownership, tampered, expired and revoked tokens, brute force, CORS, CSRF, and the redirect to Google.
 
 ---
 
 ## 7. Weak points (know them before the coach finds them)
 
 1. **`Role` is an enum, not a table.** The brief says "User and Role entities". Say why (question above), and that a table is a small change if needed.
-2. **No ownership check.** The role decides what you may do, but an AUTHOR can pass any `authorId` when creating a post (as in Lab 3). The lab only asks for role-based rules.
+2. **Ownership has limits.** Tags have no owner, so any AUTHOR can rename any tag (only the delete is ADMIN-only). An ADMIN can edit any post or comment, on purpose (moderation). The `authorId` is still sent by the client, but it must be the logged-in user, otherwise 403. A cleaner API would not take `authorId` at all and use the logged-in user.
 3. **A token stays valid until it expires**, even if the user is deleted or the role changes, unless the user logs out. The lifetime is 60 minutes.
 4. **The blacklist and counters are in memory** (lost on restart, one server only). Entries of expired tokens are removed only when somebody logs out.
 5. **Brute force is detected, not blocked.** No account lock. The failed-login map is never cleaned for usernames that never log in successfully.
@@ -244,11 +253,12 @@ Needs `@EnableMethodSecurity`. `hasRole('ADMIN')` checks the authority `ROLE_ADM
 | 9 | `config/CorsConfig` | origins, methods, headers |
 | 10 | `controller/rest/CsrfDemoController` | the form with the hidden `_csrf` |
 | 11 | `controller/rest/PostController` | `@PreAuthorize` examples |
+| 11b | `service/OwnershipChecker` | `isPostOwner`, `isCommentOwner`, `isUser` used in `@PreAuthorize` |
 | 12 | `config/AdminSeeder` | first ADMIN at startup |
 
 **Small changes the coach may ask for:**
 - *Token lifetime*: `app.jwt.expiration-minutes` in `application.properties`.
 - *Another allowed origin*: `app.cors.allowed-origins` (or `CORS_ALLOWED_ORIGINS`).
-- *Change who can delete posts*: the `@PreAuthorize` above `delete` in `PostController`.
+- *Change who can delete posts*: the `@PreAuthorize` above `delete` in `PostController` (today: the owner or an ADMIN).
 - *Brute-force limit*: `FAILURE_LIMIT` in `SecurityEvents`.
 - *Make an endpoint public*: add its URL to `permitAll()` in the `api` chain of `SecurityConfig`.
