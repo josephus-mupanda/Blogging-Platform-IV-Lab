@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Blogging Platform IV",
-    "description": "REST and GraphQL requests for the Blogging Platform IV lab (Spring Security, JWT, Google OAuth2, RBAC).\n\n1. Start the app: .\\mvnw.cmd spring-boot:run (dev profile, the ADMIN account is admin / Admin@12345).\n2. Import this file and run the collection from top to bottom (Collection Runner). Every request has a test.\n3. The collection sends the ADMIN token ({{adminToken}}) by default. Requests in the role, token and CORS folders choose their own token or none.\nThe 'Expired token' request signs a token with the dev secret of application-dev.properties, so it only gives 401 on the dev profile.",
+    "description": "REST and GraphQL requests for the Blogging Platform IV lab (Spring Security, JWT, Google OAuth2, RBAC).\n\n1. Start the app: .\\mvnw.cmd spring-boot:run (dev profile, the ADMIN account is admin / Admin@12345).\n2. Import this file and run the collection from top to bottom (Collection Runner). Every request has a test.\n3. The collection sends the ADMIN token ({{adminToken}}) by default. Requests in the role, token and CORS folders choose their own token or none.\nThe 'Expired token' request signs a token with the variable jwtSecret, which must be the same as app.jwt.secret in application-dev.properties (dev profile).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -19,7 +19,7 @@
     },
     {
       "key": "jwtSecret",
-      "value": "dev-only-secret-change-me-dev-only-secret-change-me"
+      "value": "CAqTwClBaG2/4Asfkr/lqr06z/trVeFVETK92NkdlCI="
     },
     {
       "key": "adminToken",
@@ -115,6 +115,34 @@
     },
     {
       "key": "postTitle",
+      "value": ""
+    },
+    {
+      "key": "author2Name",
+      "value": ""
+    },
+    {
+      "key": "author2UserId",
+      "value": ""
+    },
+    {
+      "key": "author2Token",
+      "value": ""
+    },
+    {
+      "key": "ownPostId",
+      "value": ""
+    },
+    {
+      "key": "ownPostTitle",
+      "value": ""
+    },
+    {
+      "key": "ownCommentId",
+      "value": ""
+    },
+    {
+      "key": "adminDeletePostId",
       "value": ""
     }
   ],
@@ -1879,6 +1907,641 @@
       "description": "The same endpoints called with the three roles. 403 means logged in, but the role is not allowed."
     },
     {
+      "name": "7b. Ownership checks (only the owner)",
+      "description": "A user can edit or delete only what belongs to them (an ADMIN can do it for everybody), and cannot create something in the name of another user. 403 = not yours.",
+      "item": [
+        {
+          "name": "Register a second AUTHOR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{author2Name}}\",\n  \"email\": \"{{author2Name}}@example.test\",\n  \"displayName\": \"Second Author\",\n  \"password\": \"Author@12345\",\n  \"role\": \"AUTHOR\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('author2Name', 'author2_' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('author2UserId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as the second AUTHOR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{author2Name}}\",\n  \"password\": \"Author@12345\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('author2Token', pm.response.json().data.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AUTHOR 1 creates a post in his own name - expect 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/posts?authorId={{authorUserId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{ownPostTitle}}\",\n  \"body\": \"A post written by author 1.\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('ownPostTitle', 'Ownership ' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ownPostId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AUTHOR 1 creates a post in the name of AUTHOR 2 - expect 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/posts?authorId={{author2UserId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Spoofed {{$timestamp}}\",\n  \"body\": \"Written in the name of somebody else.\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AUTHOR 2 edits the post of AUTHOR 1 - expect 403",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/posts/{{ownPostId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Hacked {{$timestamp}}\",\n  \"body\": \"Not my post.\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{author2Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AUTHOR 2 deletes the post of AUTHOR 1 - expect 403",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/posts/{{ownPostId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{author2Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AUTHOR 1 edits his own post - expect 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/posts/{{ownPostId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{ownPostTitle}}\",\n  \"body\": \"Edited by its author.\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "READER comments in his own name - expect 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/posts/{{ownPostId}}/comments?authorId={{readerUserId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"A comment from the reader.\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{readerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ownCommentId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "READER comments in the name of AUTHOR 1 - expect 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/posts/{{ownPostId}}/comments?authorId={{authorUserId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Written in the name of somebody else.\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{readerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "READER reviews in the name of AUTHOR 1 - expect 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/posts/{{ownPostId}}/reviews?reviewerId={{authorUserId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"text\": \"Written in the name of somebody else.\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{readerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AUTHOR 2 edits the comment of the READER - expect 403",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/posts/{{ownPostId}}/comments/{{ownCommentId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Changed by somebody else.\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{author2Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AUTHOR 2 deletes the comment of the READER - expect 403",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/posts/{{ownPostId}}/comments/{{ownCommentId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{author2Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "READER edits his own comment - expect 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/posts/{{ownPostId}}/comments/{{ownCommentId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Edited by its author.\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{readerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "READER deletes his own comment - expect 200",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/posts/{{ownPostId}}/comments/{{ownCommentId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{readerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AUTHOR deletes a post that does not exist - expect 404 (not 403)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/posts/999999",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AUTHOR 1 deletes his own post - expect 200",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/posts/{{ownPostId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AUTHOR 1 creates another post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/posts?authorId={{authorUserId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Admin will delete {{$timestamp}}\",\n  \"body\": \"To show that an ADMIN can delete any post.\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('adminDeletePostId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "ADMIN deletes the post of AUTHOR 1 - expect 200",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/posts/{{adminDeletePostId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "8. Token checks (JWT, logout, monitoring)",
       "item": [
         {
@@ -2630,6 +3293,25 @@
             "method": "DELETE",
             "header": [],
             "url": "{{baseUrl}}/api/users/{{readerUserId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete the second AUTHOR",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/{{author2UserId}}"
           },
           "event": [
             {
