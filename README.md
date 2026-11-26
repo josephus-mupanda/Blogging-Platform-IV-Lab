@@ -86,6 +86,8 @@ $env:GOOGLE_CLIENT_SECRET = "<client secret>"
 
 4. Open <http://localhost:8080/oauth2/authorization/google> in a browser and sign in. The page shows a JWT.
 
+Instead of typing them each time, you can write the same two lines in a file named `.env` at the project root (`GOOGLE_CLIENT_ID=...` and `GOOGLE_CLIENT_SECRET=...`). The app reads it at startup and git ignores it.
+
 Without these two values the app still starts, and only the Google login fails.
 
 ---
